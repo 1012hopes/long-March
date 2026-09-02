@@ -1,0 +1,439 @@
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import MapCanvas, { ROUTE_BOUNDS, lineBounds, type CameraReq } from "./map/MapCanvas";
+import TopBar, { type Mode } from "./components/TopBar";
+import LeftTimeline from "./components/LeftTimeline";
+import RightPanel, { type RightView } from "./components/RightPanel";
+import BottomPanel from "./components/BottomPanel";
+import Legend from "./components/Legend";
+import InfoSheet from "./components/InfoSheet";
+import LayerPanel, { type MapLayerVisibility } from "./components/LayerPanel";
+import MapTitleReveal from "./components/MapTitleReveal";
+import { TOUR_STOPS } from "./tour";
+import { nodes } from "./data/nodes";
+import { stories } from "./data/stories";
+import { NODE_FRACTIONS, activeSegmentAt } from "./data/time";
+import { getChinaOverviewBounds } from "./map/overview";
+import { getRightPanelPresentation } from "./layout/rightPanelPresentation";
+
+const SEG_PRIMARY_LINE: Record<string, string> = {
+  "seg-01": "seg-01",
+  "seg-02": "seg-02",
+  "seg-03": "seg-03",
+  "seg-04": "seg-04a",
+  "seg-05": "seg-05",
+  "seg-06": "seg-06",
+  "seg-07": "seg-07",
+  "seg-08": "seg-08a",
+};
+
+function unionBounds(lineIds: string[], margin = 0.4): [number, number, number, number] {
+  let w = 180;
+  let s = 90;
+  let e = -180;
+  let n = -90;
+  for (const id of lineIds) {
+    const [a, b, c, d] = lineBounds(id);
+    w = Math.min(w, a + margin);
+    s = Math.min(s, b + margin);
+    e = Math.max(e, c - margin);
+    n = Math.max(n, d - margin);
+  }
+  return [w, s, e, n];
+}
+
+export default function App() {
+  const [mode, setMode] = useState<Mode>("explore");
+  const [tourIndex, setTourIndex] = useState(0);
+  const [progress, setProgress] = useState(1);
+  const [playing, setPlaying] = useState(false);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
+  const [mapLayers, setMapLayers] = useState<MapLayerVisibility>({
+    terrain: true,
+    contours: true,
+    water: true,
+    labels: true,
+    route: true,
+    nodes: true,
+    stories: true,
+  });
+  const [rightView, setRightView] = useState<RightView>(null);
+  const [depth, setDepth] = useState<"concise" | "deep">("concise");
+  const [terrain3d, setTerrain3d] = useState(false);
+  const [showEpilogue, setShowEpilogue] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [bottomExpanded, setBottomExpanded] = useState(false);
+  const [cameraReq, setCameraReq] = useState<CameraReq | null>(null);
+
+  const seqRef = useRef(0);
+  const progressRef = useRef(progress);
+  progressRef.current = progress;
+  const playingRef = useRef(playing);
+  playingRef.current = playing;
+  const activeSegRef = useRef<string | null>(null);
+
+  const fly = useCallback((req: Omit<CameraReq, "seq">) => {
+    setCameraReq({ ...req, seq: ++seqRef.current });
+  }, []);
+
+  const stop = mode === "tour" ? TOUR_STOPS[tourIndex] : null;
+  const tourRightView: RightView =
+    stop && stop.kind !== "intro" ? { type: "node", nodeId: stop.nodeIds[0] } : null;
+  const effectiveRightView = focusMode ? null : mode === "tour" ? tourRightView : rightView;
+  const rightPanelPresentation = getRightPanelPresentation(effectiveRightView?.type ?? null);
+
+  // 面板安全区（docs/16 §6）
+  const padding = useMemo(() => {
+    if (focusMode) return { top: 72, right: 28, bottom: 28, left: 28 };
+    if (rightPanelPresentation.learningFocus) return { top: 28, right: 28, bottom: 28, left: 28 };
+    const isNarrow = window.innerWidth < 900;
+    if (isNarrow) return { top: 64, right: 12, bottom: bottomExpanded ? 300 : 150, left: 12 };
+    return {
+      top: 76,
+      right: rightPanelPresentation.mapPaddingRight,
+      bottom: bottomExpanded ? 310 : 100,
+      left: leftCollapsed ? 92 : 316,
+    };
+  }, [focusMode, rightPanelPresentation.learningFocus, rightPanelPresentation.mapPaddingRight, bottomExpanded, leftCollapsed]);
+
+  // 播放循环：路线沿时间顺序显影，相机跟随当前段
+  useEffect(() => {
+    if (!playing) return;
+    let raf = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      if (!playingRef.current) return;
+      const dt = now - last;
+      last = now;
+      const next = Math.min(1, progressRef.current + dt / 42000);
+      setProgress(next);
+      const seg = activeSegmentAt(next);
+      if (seg !== activeSegRef.current) {
+        activeSegRef.current = seg;
+        const primary = SEG_PRIMARY_LINE[seg];
+        fly({ bounds: lineBounds(primary), duration: 2400 });
+      }
+      if (next >= 1) {
+        setPlaying(false);
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [playing, fly]);
+
+  // 导览：进度与相机随停靠点走
+  const applyTourStop = useCallback(
+    (index: number) => {
+      const stop = TOUR_STOPS[index];
+      setProgress(stop.revealT);
+      setShowEpilogue(stop.kind === "final");
+      setSelectedNodeId(stop.nodeIds[0] ?? null);
+      setBottomExpanded(false);
+      if (stop.kind === "intro" || stop.kind === "final") {
+        fly({ bounds: ROUTE_BOUNDS, duration: 2600, zoom: 6.4 });
+      } else {
+        const lineIds = stop.nodeIds.flatMap((nid) => nodes.find((x) => x.id === nid)!.segmentIds);
+        fly({ bounds: unionBounds(lineIds), duration: 2600 });
+      }
+    },
+    [fly]
+  );
+
+  const enterMode = useCallback(
+    (m: Mode) => {
+      setMode(m);
+      setPlaying(false);
+      setFocusMode(false);
+      setSelectedStoryId(null);
+      if (m === "tour") {
+        setTourIndex(0);
+        setRightView(null);
+        applyTourStop(0);
+      } else if (m === "explore") {
+        setShowEpilogue(false);
+        setRightView(null);
+        fly({ bounds: getChinaOverviewBounds(), duration: 2000 });
+      } else {
+        setRightView({ type: "sources" });
+      }
+    },
+    [applyTourStop, fly]
+  );
+
+  // 节点选择（地图标记 / 左侧列表 / 面板翻页）
+  const selectNode = useCallback(
+    (id: string) => {
+      const node = nodes.find((x) => x.id === id)!;
+      setMode("explore");
+      setPlaying(false);
+      setSelectedNodeId(id);
+      setSelectedStoryId(null);
+      setRightView({ type: "node", nodeId: id });
+      setProgress((t) => Math.max(t, NODE_FRACTIONS[id]));
+      const pts: Array<[number, number]> = [node.anchor, ...node.secondary.map((s) => [s.lon, s.lat] as [number, number])];
+      const w = Math.min(...pts.map((q) => q[0])) - 0.5;
+      const e2 = Math.max(...pts.map((q) => q[0])) + 0.5;
+      const s = Math.min(...pts.map((q) => q[1])) - 0.5;
+      const n2 = Math.max(...pts.map((q) => q[1])) + 0.5;
+      fly({ bounds: [w, s, e2, n2], duration: 2200 });
+    },
+    [fly]
+  );
+
+  const selectStory = useCallback(
+    (id: string) => {
+      const story = stories.find((item) => item.id === id);
+      if (!story) return;
+      setMode("explore");
+      setPlaying(false);
+      setSelectedStoryId(id);
+      setSelectedNodeId(story.nodeId);
+      setRightView({ type: "story", storyId: id });
+    },
+    []
+  );
+
+  const prevNext = useCallback(
+    (dir: -1 | 1) => {
+      if (mode === "tour") {
+        const nextIndex = tourIndex + dir;
+        if (nextIndex < 0) return;
+        if (nextIndex >= TOUR_STOPS.length) {
+          enterMode("explore");
+          return;
+        }
+        setTourIndex(nextIndex);
+        applyTourStop(nextIndex);
+      } else if (selectedNodeId) {
+        const cur = nodes.find((x) => x.id === selectedNodeId)!;
+        const target = nodes.find((x) => x.seq === cur.seq + dir);
+        if (target) selectNode(target.id);
+      }
+    },
+    [mode, tourIndex, selectedNodeId, applyTourStop, enterMode, selectNode]
+  );
+
+  // Esc 逐层关闭；←/→ 在导览中翻站
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (infoOpen) setInfoOpen(false);
+        else if (focusMode) setFocusMode(false);
+        else if (rightView) setRightView(null);
+        else if (bottomExpanded) setBottomExpanded(false);
+      } else if (e.key === "ArrowRight" && mode === "tour") {
+        prevNext(1);
+      } else if (e.key === "ArrowLeft" && mode === "tour") {
+        prevNext(-1);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [infoOpen, focusMode, rightView, bottomExpanded, mode, prevNext]);
+
+  const selectedStory = selectedStoryId ? stories.find((item) => item.id === selectedStoryId) : null;
+  const selectedNode = selectedNodeId ? nodes.find((item) => item.id === selectedNodeId) : null;
+  const revealTitle = selectedStory?.title ?? selectedNode?.title ?? null;
+  const revealMeta = selectedStory
+    ? selectedStory.dateLabel + " / " + selectedStory.place
+    : selectedNode
+      ? selectedNode.displayDateLabel
+      : "";
+
+  const onScrub = (t: number) => {
+    setPlaying(false);
+    setProgress(t);
+  };
+
+  return (
+    <div
+      className={`app ${focusMode ? "focus" : ""} ${rightPanelPresentation.learningFocus ? "learning-focus" : ""}`}
+      style={
+        {
+          "--learning-map-width": rightPanelPresentation.mapWidth,
+          "--learning-panel-width": rightPanelPresentation.panelWidth,
+        } as CSSProperties
+      }
+    >
+      <MapCanvas
+        progress={progress}
+        selectedNodeId={selectedNodeId}
+        selectedStoryId={selectedStoryId}
+        layers={mapLayers}
+        terrain3d={terrain3d}
+        showEpilogue={showEpilogue}
+        learningFocus={rightPanelPresentation.learningFocus}
+        padding={padding}
+        cameraReq={cameraReq}
+        onSelectNode={selectNode}
+        onSelectStory={selectStory}
+        onUserGesture={() => setPlaying(false)}
+      />
+
+      {revealTitle && (
+        <MapTitleReveal
+          key={selectedStoryId ?? selectedNodeId ?? revealTitle}
+          title={revealTitle}
+          meta={revealMeta}
+        />
+      )}
+
+      {!focusMode && (
+        <TopBar
+          mode={mode}
+          onMode={enterMode}
+          playing={playing}
+          onPlayToggle={() => {
+            if (!playing && progress >= 1) setProgress(0);
+            activeSegRef.current = null;
+            setPlaying(!playing);
+          }}
+          terrain3d={terrain3d}
+          onTerrain3d={() => setTerrain3d((v) => !v)}
+          focusMode={focusMode}
+          onFocusToggle={() => setFocusMode(true)}
+          onInfo={() => setInfoOpen(true)}
+        />
+      )}
+
+      {focusMode && (
+        <button className="focus-exit" onClick={() => setFocusMode(false)}>
+          退出专注地图
+        </button>
+      )}
+
+      {!focusMode && mode !== "sources" && (
+        <LeftTimeline
+          progress={progress}
+          selectedNodeId={selectedNodeId}
+          collapsed={leftCollapsed || mode === "tour"}
+          onToggleCollapse={() => setLeftCollapsed((v) => !v)}
+          onSelect={selectNode}
+        />
+      )}
+
+      <RightPanel
+        view={effectiveRightView}
+        depth={depth}
+        onDepth={setDepth}
+        onClose={() => {
+          setSelectedStoryId(null);
+          if (mode === "tour") enterMode("explore");
+          else setRightView(null);
+        }}
+        onSelectNode={selectNode}
+        onOpenSources={(nodeId) => {
+          setMode("explore");
+          setSelectedStoryId(null);
+          setRightView({ type: "sources", nodeId });
+        }}
+        onPrevNext={prevNext}
+        tourChrome={
+          stop && stop.kind !== "intro"
+            ? { index: tourIndex + 1, total: TOUR_STOPS.length, stopTitle: stop.title }
+            : null
+        }
+      />
+
+      {!focusMode && mode !== "sources" && (
+        <BottomPanel
+          progress={progress}
+          selectedNodeId={selectedNodeId}
+          expanded={bottomExpanded}
+          onToggle={() => setBottomExpanded((v) => !v)}
+          onScrub={onScrub}
+          playing={playing}
+          onPlayToggle={() => {
+            if (!playing && progress >= 1) setProgress(0);
+            activeSegRef.current = null;
+            setPlaying(!playing);
+          }}
+        />
+      )}
+
+      {!focusMode && mode !== "sources" && (
+        <LayerPanel
+          layers={mapLayers}
+          onChange={(key, value) => setMapLayers((current) => ({ ...current, [key]: value }))}
+          onPreset={(preset) =>
+            setMapLayers(
+              preset === "map"
+                ? {
+                    terrain: true,
+                    contours: true,
+                    water: true,
+                    labels: true,
+                    route: false,
+                    nodes: false,
+                    stories: false,
+                  }
+                : {
+                    terrain: true,
+                    contours: true,
+                    water: true,
+                    labels: true,
+                    route: true,
+                    nodes: true,
+                    stories: true,
+                  }
+            )
+          }
+        />
+      )}
+
+      {!focusMode && mode !== "sources" && (
+        <Legend
+          showEpilogue={showEpilogue}
+          onEpilogue={setShowEpilogue}
+          showStories={mapLayers.stories}
+          onStories={(value) => setMapLayers((current) => ({ ...current, stories: value }))}
+          onResetView={() => fly({ bounds: getChinaOverviewBounds(), duration: 2200 })}
+        />
+      )}
+
+      {mode === "tour" && stop && (
+        <>
+          {stop.kind === "intro" && (
+            <div className="intro-card" role="dialog" aria-label="导览总览">
+              <span className="chip chip-demo">导览 · 第 1 / {TOUR_STOPS.length} 站</span>
+              <h2>{stop.title}</h2>
+              <blockquote>{stop.question}</blockquote>
+              <p>{stop.text}</p>
+              <div className="intro-actions">
+                <button className="primary-btn" onClick={() => prevNext(1)}>
+                  出发 →
+                </button>
+                <button className="ghost-btn" onClick={() => enterMode("explore")}>
+                  先自己看看地图
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="tour-nav">
+            <button className="ghost-btn" onClick={() => prevNext(-1)} disabled={tourIndex === 0}>
+              ◀ 上一站
+            </button>
+            <span className="tour-nav-title">
+              第 {tourIndex + 1} / {TOUR_STOPS.length} 站 · {stop.title}
+            </span>
+            {tourIndex < TOUR_STOPS.length - 1 ? (
+              <button className="primary-btn" onClick={() => prevNext(1)}>
+                下一站 ▶
+              </button>
+            ) : (
+              <button className="primary-btn" onClick={() => enterMode("explore")}>
+                完成导览
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {infoOpen && <InfoSheet onClose={() => setInfoOpen(false)} />}
+    </div>
+  );
+}

@@ -1,0 +1,9 @@
+segment_id,seq,unit_scope,from_node_id,to_node_id,not_before,not_after,display_date_label,certainty,geometry_role,dispute_group_id,source_ids,reasoning,geometry_status,review_status,reviewer,review_date
+seg-01,1,central-red-army,node-01,node-02,1934-10-10,1934-12-01,1934年10月至12月,approximate,corridor,,hist-001;hist-002;hist-003;hist-004,当前只确认主要起点事件与湘江阶段，不画逐日单线,not-digitized,research,,
+seg-02,2,central-red-army,node-02,node-03,1934-12-01,1935-01-01,1934年12月,approximate,corridor,,hist-004;hist-005;hist-006;hist-020,路线转向必须与通道黎平猴场会议链共同解释,not-digitized,research,,
+seg-03,3,central-red-army,node-03,node-04,1935-01-01,1935-01-17,1935年1月上中旬,approximate,centerline,,hist-006;hist-007;hist-008;hist-020,只在史料可确认的城镇节点间使用代表性中心线,not-digitized,research,,
+seg-04,4,central-red-army,node-04,node-05,1935-01-17,1935-03-30,1935年1月至3月,disputed,candidate,dispute-red-river,hist-009;hist-010,四渡赤水多次往返，应按渡河事件和候选区段建模,not-digitized,research,,
+seg-05,5,central-red-army,node-05,node-06,1935-03-30,1935-05-09,1935年春,approximate,corridor,,hist-010;hist-011;hist-012,川黔滇至金沙江段先建约略走廊，渡口点单独核验,not-digitized,research,,
+seg-06,6,central-red-army,node-06,node-07,1935-05-09,1935-05-29,1935年5月,approximate,corridor,,hist-011;hist-013;hist-014;hist-021,金沙江至大渡河阶段不沿现代公路硬画,not-digitized,research,,
+seg-07,7,central-red-army,node-07,node-08,1935-05-29,1935-06-17,1935年5月底至6月,approximate,corridor,,hist-013;hist-014;hist-015;hist-016;hist-021,泸定桥至夹金山和会师段需结合地形与史料,not-digitized,research,,
+seg-08,8,central-red-army,node-08,node-09,1935-06-17,1935-10-22,1935年夏至秋,disputed,candidate,dispute-northward,hist-015;hist-016;hist-017;hist-018;hist-019,会师后至陕北跨度大且涉及路线分歧，只作候选与分阶段说明,not-digitized,research,,

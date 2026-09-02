@@ -1,0 +1,7 @@
+resource_id,source_id,title,resource_type,original_author,rights_holder,original_public_domain,digital_rights_holder,access_method,allow_public_display,allow_download,allow_adaptation,allow_commercial,attribution,permission_record,risk_level,fallback
+media-001,hist-001,中央红军长征开始页面正文,web-text,中国共产党新闻网,页面权利主体未单独确认,unknown,中国共产党新闻网,official-url,citation-only,no,no,no,retain-title-url,,medium,self-written summary
+media-002,map-002,标准地图总览,official-map,自然资源部,自然资源部,not-applicable,自然资源部,official-download,permission-needed,permission-needed,permission-needed,permission-needed,审图号与来源,,high,self-drawn schematic map
+media-003,dem-001,开放DEM派生阴影图,derived-raster,NASA,NASA,public-domain,project-generated,official-data,yes,yes,yes,check-license,NASA DOI,,low,remove terrain layer
+media-004,all,沿线纪念馆现场照片,photo,project photographer,project team,no,project team,own-camera,yes,yes,yes,yes,摄影者署名,own-release,low,abstract illustration
+media-005,all,馆藏历史照片,photo,unknown,archive or museum,unknown,archive or museum,permission-request,permission-needed,permission-needed,permission-needed,permission-needed,institution-required,,high,bibliographic citation only
+media-006,all,新闻视频截图,video-frame,news agency,news agency,unknown,news agency,web-page,permission-needed,no,no,no,source link,,high,self-produced motion graphics

@@ -1,0 +1,10 @@
+node_id,seq,title,unit_scope,time_start,time_end,display_date_label,places,core_question,source_ids,precision_status,review_status,reviewer,review_date,notes
+node-01,1,瑞金出发、于都集结渡河,central-red-army,1934-10-10,1934-10-20,1934年10月,瑞金;于都,为什么是战略转移而不是普通旅行？,hist-001;hist-002,confirmed,review,,,不要称于都是唯一出发点
+node-02,2,湘江战役,central-red-army,1934-11-27,1934-12-01,1934年11月底至12月初,全州;兴安,为什么是生死关与重大转折？,hist-003;hist-004,approximate,review,,,数字待多源核验
+node-03,3,通道—黎平—猴场：转兵贵州,central-red-army,1934-12-12,1935-01-01,1934年12月至1935年1月,通道;黎平;猴场,路线为何从原定方向转向贵州？,hist-005;hist-006;hist-020,confirmed,review,,,黎平已补中央党史和文献研究院负责人文章来源
+node-04,4,遵义会议,central-red-army,1935-01-15,1935-01-17,1935年1月15日至17日,遵义,为什么说这是伟大转折？,hist-007;hist-008,confirmed,review,,,事实与解释分开
+node-05,5,四渡赤水,central-red-army,1935-01-29,1935-03-30,1935年1月至3月,赤水河流域,如何理解机动、情报与主动权？,hist-009;hist-010,approximate,review,,,不做逐日GPS
+node-06,6,巧渡金沙江,central-red-army,1935-05-03,1935-05-09,1935年5月上旬,皎平渡,为什么渡江改变了追堵态势？,hist-011;hist-012,confirmed,review,,,渡口几何需GIS核对
+node-07,7,强渡大渡河与飞夺泸定桥,central-red-army,1935-05-24,1935-05-29,1935年5月下旬,安顺场;泸定桥,为什么必须区分两个连续事件？,hist-013;hist-014;hist-021,confirmed,review,,,安顺场与泸定桥已分别有来源，仍需专业审核
+node-08,8,翻越夹金山、与红四方面军会师,central-red-army,1935-06-12,1935-06-17,1935年6月中旬,夹金山;达维;懋功,为什么会师不是长征终点？,hist-015;hist-016,approximate,review,,,明确不是三大主力会师
+node-09,9,哈达铺—榜罗镇—吴起镇,central-red-army,1935-09-18,1935-10-22,1935年9月至10月,哈达铺;榜罗镇;吴起镇,如何区分到达陕北、中央红军结束和长征总史？,hist-017;hist-018;hist-019,approximate,review,,,1936总史尾声单列

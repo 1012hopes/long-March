@@ -1,0 +1,254 @@
+[
+  {
+    "id": "story-01",
+    "nodeId": "node-01",
+    "title": "于都河夜渡",
+    "shortTitle": "于都夜渡",
+    "dateLabel": "1934年10月17日至20日",
+    "place": "江西于都河多个渡口",
+    "location": [115.415, 25.952],
+    "kind": "crossing",
+    "precision": "confirmed",
+    "summary": "中央红军主力在夜色掩护下从于都河多个渡口渡河。当地群众帮助架设浮桥、筹集船只并严守行动秘密，战略转移由此真正进入长距离行军阶段。",
+    "people": [
+      { "name": "中央红军主力", "role": "从多个渡口分批渡河，开始战略转移" },
+      { "name": "于都群众", "role": "协助架桥、供船、筹集物资并保护行动秘密" }
+    ],
+    "sourceIds": ["hist-001", "hist-002"],
+    "question": "一条河流为什么会成为整个行程真正开始的空间界线？"
+  },
+  {
+    "id": "story-02",
+    "nodeId": "node-02",
+    "title": "湘江七昼夜",
+    "shortTitle": "湘江抢渡",
+    "dateLabel": "1934年11月27日至12月1日",
+    "place": "广西全州、兴安一带",
+    "location": [110.84, 25.79],
+    "kind": "battle",
+    "precision": "approximate",
+    "summary": "中央红军在全州、兴安之间抢渡湘江。先头部队控制渡口后，主力与辎重仍受到时间和道路条件拖累，湘江两岸的战斗成为长征途中最严峻的生死关口之一。",
+    "people": [
+      { "name": "中央红军先头部队", "role": "抢占和守卫渡口，为主力渡江争取时间" },
+      { "name": "中央红军主力", "role": "在多路围堵压力下完成渡江并突破封锁线" }
+    ],
+    "sourceIds": ["hist-003", "hist-004"],
+    "question": "渡口、道路和行军速度怎样共同改变一场战役的结果？"
+  },
+  {
+    "id": "story-03",
+    "nodeId": "node-03",
+    "title": "通道会议转向",
+    "shortTitle": "通道转兵",
+    "dateLabel": "1934年12月12日",
+    "place": "湖南通道",
+    "location": [109.77, 26.16],
+    "kind": "decision",
+    "precision": "confirmed",
+    "summary": "面对前往湘西方向可能遭遇的重兵阻截，中共中央负责人在通道讨论行军方向。毛泽东提出转向敌军力量相对薄弱的贵州，路线开始从既定会合目标转向新的生存空间。",
+    "people": [
+      { "name": "毛泽东", "role": "主张放弃直趋湘西，转向贵州" },
+      { "name": "周恩来、朱德等", "role": "参加对行军方向和敌情的讨论" }
+    ],
+    "sourceIds": ["hist-005", "hist-020"],
+    "question": "地图上的一次转弯，背后需要怎样的敌情判断和集体决策？"
+  },
+  {
+    "id": "story-04",
+    "nodeId": "node-03",
+    "title": "黎平会议定向",
+    "shortTitle": "黎平定向",
+    "dateLabel": "1934年12月18日",
+    "place": "贵州黎平",
+    "location": [109.14, 26.23],
+    "kind": "meeting",
+    "precision": "confirmed",
+    "summary": "中共中央政治局在黎平召开会议，正式决定向贵州西北方向前进，在川黔边建立新的根据地。通道提出的转向意见由临时选择进一步变成明确的政治局决议。",
+    "people": [
+      { "name": "中共中央政治局", "role": "讨论并形成新的战略行动方针" },
+      { "name": "毛泽东", "role": "继续推动改变原有行军方向" }
+    ],
+    "sourceIds": ["hist-005", "hist-020"],
+    "question": "为什么一次临时转向还需要通过会议变成正式决策？"
+  },
+  {
+    "id": "story-05",
+    "nodeId": "node-04",
+    "title": "遵义会议",
+    "shortTitle": "遵义会议",
+    "dateLabel": "1935年1月15日至17日",
+    "place": "贵州遵义",
+    "location": [106.927, 27.725],
+    "kind": "meeting",
+    "precision": "confirmed",
+    "summary": "中共中央政治局在遵义召开扩大会议，集中总结第五次反“围剿”和长征初期军事指挥经验，调整中央领导分工。它是长征决策链中的关键转折，而不是脱离前后过程的单一瞬间。",
+    "people": [
+      { "name": "毛泽东", "role": "在会议中对既往军事指挥问题作出重要分析" },
+      { "name": "周恩来、张闻天、王稼祥等", "role": "参加会议并推动领导和军事指挥调整" }
+    ],
+    "sourceIds": ["hist-007", "hist-008", "hist-020"],
+    "question": "为什么历史转折常常来自一连串讨论，而不只是一次会议？"
+  },
+  {
+    "id": "story-06",
+    "nodeId": "node-05",
+    "title": "四渡赤水",
+    "shortTitle": "四渡赤水",
+    "dateLabel": "1935年1月至3月",
+    "place": "川黔边赤水河流域",
+    "location": [105.7, 28.25],
+    "kind": "march",
+    "precision": "approximate",
+    "summary": "中央红军在赤水河流域多次往返穿插，通过渡河、佯动和转向调动追堵力量。地图上看似反复的路线，实际反映了根据敌情不断调整行动方向、争取主动的过程。",
+    "people": [
+      { "name": "毛泽东", "role": "参与形成机动作战和多次转向的指挥决策" },
+      { "name": "周恩来、朱德", "role": "参与中央红军军事行动的组织与指挥" }
+    ],
+    "sourceIds": ["hist-009", "hist-010"],
+    "question": "为什么这段路线不能被简化成一条从起点直达终点的线？"
+  },
+  {
+    "id": "story-07",
+    "nodeId": "node-06",
+    "title": "皎平渡巧渡金沙江",
+    "shortTitle": "皎平渡",
+    "dateLabel": "1935年5月初",
+    "place": "云南禄劝皎平渡",
+    "location": [102.62, 26.05],
+    "kind": "crossing",
+    "precision": "confirmed",
+    "summary": "中央红军先遣力量找到皎平渡并控制渡口，主力利用有限船只连续渡过金沙江。追兵抵达南岸前，大部队已经转移到北岸，险峻河谷由障碍变成摆脱追堵的时间窗口。",
+    "people": [
+      { "name": "刘伯承", "role": "率先遣力量侦察并组织控制金沙江渡口" },
+      { "name": "中央红军渡江部队", "role": "利用船只昼夜连续完成渡江" }
+    ],
+    "sourceIds": ["hist-011", "hist-012"],
+    "question": "在深切河谷中，找到一个可用渡口为什么比直线距离更重要？"
+  },
+  {
+    "id": "story-08",
+    "nodeId": "node-07",
+    "title": "安顺场强渡大渡河",
+    "shortTitle": "安顺场",
+    "dateLabel": "1935年5月24日至25日",
+    "place": "四川石棉安顺场",
+    "location": [102.35, 29.23],
+    "kind": "crossing",
+    "precision": "confirmed",
+    "summary": "红军先头部队在安顺场控制渡口，并由突击队乘船强渡大渡河。有限船只无法让全军迅速过河，行动重点因此转向沿河急进、抢占泸定桥。",
+    "people": [
+      { "name": "刘伯承、聂荣臻", "role": "率先遣部队向安顺场方向急进" },
+      { "name": "孙继先等突击队员", "role": "组织和参加强渡大渡河行动" }
+    ],
+    "sourceIds": ["hist-021"],
+    "question": "为什么已经成功渡河，仍然必须继续争夺另一座桥？"
+  },
+  {
+    "id": "story-09",
+    "nodeId": "node-07",
+    "title": "飞夺泸定桥",
+    "shortTitle": "泸定桥",
+    "dateLabel": "1935年5月29日",
+    "place": "四川泸定",
+    "location": [102.234, 29.914],
+    "kind": "battle",
+    "precision": "confirmed",
+    "summary": "红四团沿大渡河东岸急行，在泸定桥方向争取时间并夺取桥梁。安顺场有限的渡运能力与大渡河峡谷地形，使桥梁成为主力快速通过的关键通道。",
+    "people": [
+      { "name": "红四团", "role": "沿河急行并承担夺取泸定桥的任务" },
+      { "name": "突击队员", "role": "在桥面受损和对岸火力威胁下向前突击" }
+    ],
+    "sourceIds": ["hist-013", "hist-014", "hist-021"],
+    "question": "把安顺场和泸定桥放在同一张地图上，会看到怎样的时间压力？"
+  },
+  {
+    "id": "story-10",
+    "nodeId": "node-08",
+    "title": "翻越夹金山",
+    "shortTitle": "夹金山",
+    "dateLabel": "1935年6月",
+    "place": "四川夹金山",
+    "location": [102.7, 30.86],
+    "kind": "terrain",
+    "precision": "approximate",
+    "summary": "中央红军翻越夹金山高海拔地带，低温、缺氧、积雪和陡坡直接影响行军。这里的真实感不应来自奇观化画面，而应来自海拔剖面与行军条件之间的对应。",
+    "people": [
+      { "name": "中央红军翻山部队", "role": "在高海拔、低温和补给困难条件下继续北进" },
+      { "name": "沿途向导与群众", "role": "为道路辨认和行军补给提供帮助" }
+    ],
+    "sourceIds": ["hist-016"],
+    "question": "同样的地图距离，在四千米高山上意味着怎样不同的行军难度？"
+  },
+  {
+    "id": "story-11",
+    "nodeId": "node-08",
+    "title": "懋功会师",
+    "shortTitle": "懋功会师",
+    "dateLabel": "1935年6月",
+    "place": "四川懋功地区",
+    "location": [102.36, 30.99],
+    "kind": "meeting",
+    "precision": "approximate",
+    "summary": "中央红军与红四方面军在懋功地区会师。会师扩大了红军力量，也带来此后行动方向和战略方针的讨论。它与1936年的三大主力会师不是同一事件。",
+    "people": [
+      { "name": "中央红军", "role": "翻越夹金山后到达懋功地区" },
+      { "name": "红四方面军", "role": "在懋功地区与中央红军会师" }
+    ],
+    "sourceIds": ["hist-015", "hist-016"],
+    "question": "为什么“会师”既意味着力量汇合，也可能带来新的方向讨论？"
+  },
+  {
+    "id": "story-12",
+    "nodeId": "node-09",
+    "title": "哈达铺获得陕北信息",
+    "shortTitle": "哈达铺",
+    "dateLabel": "1935年9月",
+    "place": "甘肃哈达铺",
+    "location": [104.23, 34.25],
+    "kind": "decision",
+    "precision": "confirmed",
+    "summary": "中央红军在哈达铺获得关于陕北红军和根据地的信息，新的落脚方向逐渐清晰。报纸、情报和会议共同参与了终点选择，说明长征目的地不是出发时就固定好的。",
+    "people": [
+      { "name": "毛泽东等中央领导人", "role": "依据获得的信息研判陕北根据地和行军方向" },
+      { "name": "中央红军侦察与信息人员", "role": "收集报纸和沿途信息，为决策提供依据" }
+    ],
+    "sourceIds": ["hist-017", "hist-018"],
+    "question": "一份沿途获得的信息，为什么可能改变一支队伍的最终方向？"
+  },
+  {
+    "id": "story-13",
+    "nodeId": "node-09",
+    "title": "榜罗镇会议",
+    "shortTitle": "榜罗镇",
+    "dateLabel": "1935年9月下旬",
+    "place": "甘肃榜罗镇",
+    "location": [105.13, 35.05],
+    "kind": "meeting",
+    "precision": "confirmed",
+    "summary": "中共中央在榜罗镇进一步研究陕北形势和行动方向，北上目标得到确认。哈达铺获得的信息在这里经过会议研判，转化为更明确的战略选择。",
+    "people": [
+      { "name": "中共中央领导人", "role": "研究陕北形势并确定继续北上的行动方向" },
+      { "name": "中央红军各部", "role": "依据新的方向继续向陕北推进" }
+    ],
+    "sourceIds": ["hist-017", "hist-018"],
+    "question": "信息从被发现到成为行动方案，中间还需要经过哪些判断？"
+  },
+  {
+    "id": "story-14",
+    "nodeId": "node-09",
+    "title": "到达吴起镇",
+    "shortTitle": "吴起镇",
+    "dateLabel": "1935年10月",
+    "place": "陕北吴起镇",
+    "location": [108.17, 36.93],
+    "kind": "march",
+    "precision": "confirmed",
+    "summary": "中央红军到达陕北吴起镇，并与陕北红军会合，中央红军一年多的长征在狭义上结束。1936年三大主力会师是整个长征总史的尾声，需要与这一节点分层理解。",
+    "people": [
+      { "name": "中央红军", "role": "到达陕北并完成中央红军长征主线" },
+      { "name": "陕北红军", "role": "在陕北与到达的中央红军会合" }
+    ],
+    "sourceIds": ["hist-017", "hist-019"],
+    "question": "为什么中央红军到达陕北与整个长征胜利结束是两个不同层级？"
+  }
+]

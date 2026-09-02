@@ -1,0 +1,6 @@
+geodata_id,source_id,layer,provider,license_or_terms,crs,resolution_or_scale,offline_allowed,attribution,processing,review_status,notes
+geo-001,map-001,online-basemap,天地图,official-service-terms,CGCS2000/EPSG:4490-or-service-defined,service-defined,no,天地图,OpenLayers WMTS spike,research,需tk与条款确认
+geo-002,map-002,static-overview,自然资源部标准地图,审图与标准地图规则,service-defined,official-standard,no,审图号+来源,manual annotation spike,research,裁切缩放需咨询
+geo-003,dem-001,terrain-dem,NASA SRTM,Earthdata data policy,WGS84+EGM96,30m,yes,NASA DOI,GDAL hillshade,research,不证明历史路线
+geo-004,dem-002,terrain-dem,Copernicus DEM,CCM licence,WGS84-G1150+EGM2008,30m,check,source+license,GDAL profile,research,许可逐项确认
+geo-005,all,historical-route,project-authored,derived from cited sources,CRS declared per export,not-applicable,yes,project source register,manual/digitized with certainty,research,confirmed/approximate/disputed

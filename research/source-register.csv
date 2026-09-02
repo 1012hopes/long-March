@@ -1,0 +1,28 @@
+source_id,node_id,title,author_or_org,source_type,published_or_formed_date,url,accessed_date,reliability,rights_status,claim_supported,notes
+hist-001,node-01,中央红军长征开始,中国共产党新闻网,official-web,2016-08-14,https://cpc.people.com.cn/BIG5/33837/2534266.html,2026-09-01,high,citation-only,中央红军从瑞金出发,主线起点需与于都夜渡分层
+hist-002,node-01,为什么30万人能保守一个秘密,人民网党史,official-web,2016-10-09,https://dangshi.people.com.cn/n1/2016/1009/c85037-28763061.html,2026-09-01,high,citation-only,出发前保密与集结,用于教育问题不直接替代档案
+hist-003,node-02,湘江战役：中央红军长征的悲壮史诗,人民网党史,official-web,2016-02-29,https://dangshi.people.com.cn/n1/2016/0229/c85037-28159039.html,2026-09-01,high,citation-only,湘江战役时间地点与影响,需交叉核验数字
+hist-004,node-02,湘江之战和突破乌江天险,人民网党史,official-web,2016-10-10,https://dangshi.people.com.cn/n1/2016/1010/c85037-28763952.html,2026-09-01,high,citation-only,湘江至乌江阶段,不消费伤亡数字
+hist-005,node-03,通道会议：伟大转折的起点,中国共产党新闻网,official-web,2024-12-08,https://cpc.people.com.cn/n1/2024/1208/c443712-40377631.html,2026-09-01,high,citation-only,通道会议与转兵贵州,与黎平猴场合并呈现
+hist-006,node-03,猴场会议：伟大转折的前夜,中国共产党新闻网,official-web,2025-01-11,https://cpc.people.com.cn/n1/2025/0111/c443712-40399843.html,2026-09-01,high,citation-only,猴场会议,与hist-020共同覆盖黎平会议链
+hist-007,node-04,遵义1935：早到的春天,中国共产党新闻网,official-web,2025-01-15,https://cpc.people.com.cn/n1/2025/0115/c443712-40402123.html,2026-09-01,high,citation-only,遵义会议日期与意义,与正式党史著作交叉核验
+hist-008,node-04,遵义会议,中国共产党新闻网,official-web,,https://cpc.people.com.cn/GB/33837/2534276.html,2026-09-01,high,citation-only,遵义会议基本事实,页面编码需人工保存引用
+hist-009,node-05,1935年红军四渡赤水转战川南,人民网党史,official-web,2015-02-12,https://dangshi.people.com.cn/n/2015/0212/c85037-26555356.html,2026-09-01,high,citation-only,四渡赤水时间与区域,页面偶发抓取失败需人工下载书目
+hist-010,node-05,四渡赤水战役：中央红军战略转移的决定性胜利,人民网党史,official-web,2016-10-08,https://dangshi.people.com.cn/n1/2016/1008/c85037-28758648.html,2026-09-01,high,citation-only,四渡赤水历史解释,解释标签不得写成唯一事实
+hist-011,node-06,第十章 巧渡金沙江,人民网党史,official-web,2016-08-14,https://dangshi.people.com.cn/n1/2016/0814/c406330-28634787.html,2026-09-01,high,citation-only,巧渡金沙江,需要保留皎平渡与时间窗口
+hist-012,node-06,长征途中的地图与测绘,中国共产党新闻网,official-web,2023-10-22,https://cpc.people.com.cn/n1/2023/1022/c443712-40100662.html,2026-09-01,high,citation-only,地图测绘与路线理解,用于史料实证教育
+hist-013,node-07,飞夺泸定桥,中国共产党新闻网,official-web,2025-03-08,https://cpc.people.com.cn/GB/n1/2025/0308/c443712-40434014.html,2026-09-01,high,citation-only,飞夺泸定桥,与hist-021分开覆盖安顺场强渡
+hist-014,node-07,历史记忆中的长征（七）：飞夺泸定桥,共产党员网,official-web,2016-12-16,https://xuexi.12371.cn/2016/12/16/ARTI1481870706956501.shtml,2026-09-01,high,citation-only,泸定桥叙事,与安顺场分开
+hist-015,node-08,第十五章 懋功会师,人民网党史,official-web,2016-08-19,https://dangshi.people.com.cn/n1/2016/0819/c406330-28649914.html,2026-09-01,high,citation-only,懋功会师,不是1936三大主力会师
+hist-016,node-08,历史记忆中的长征（八）：红军翻越大雪山,共产党员网,official-web,2016-12-16,https://xuexi.12371.cn/2016/12/16/ARTI1481871917232610.shtml,2026-09-01,high,citation-only,夹金山与雪山,环境叙事需避免奇观化
+hist-017,node-09,中央红军到达陕北,人民网党史,official-web,2016-09-18,https://dangshi.people.com.cn/BIG5/n1/2016/0918/c85037-28721433.html,2026-09-01,high,citation-only,到达陕北,与长征结束分层
+hist-018,node-09,榜罗镇：从一口铁缸看共产党人的初心,人民网党史,official-web,2019-08-18,https://dangshi.people.com.cn/n1/2019/0818/c85037-31301507.html,2026-09-01,high,citation-only,榜罗镇信息与方向,避免把个案变成全部证据
+hist-019,node-09,红军抵达陕北吴起镇 红一方面军长征胜利结束,中国共产党新闻网,official-web,,https://cpc.people.com.cn/GB/33837/2534292.html,2026-09-01,high,citation-only,吴起镇与中央红军狭义结束,总史尾声另列
+hist-020,node-03,党的历史上生死攸关的转折点,中央党史和文献研究院院长曲青山/学习时报,official-web,2025-01-13,https://cpc.people.com.cn/BIG5/n1/2025/0113/c443712-40400457.html,2026-09-01,high,citation-only,通道黎平猴场至遵义的会议链,正文独立列出黎平会议日期和决议
+hist-021,node-07,不忘初心 传承红色基因（长征记忆·寻访红军部队）,人民网党史,official-web,2016-10-13,https://dangshi.people.com.cn/n1/2016/1013/c85037-28773975.html,2026-09-01,high,citation-only,安顺场强渡与后续泸定桥时间链,需保存页面或书目信息防链接波动
+edu-001,all,义务教育课程方案和课程标准（2022年版）,教育部,policy,2022-04-20,https://www.moe.gov.cn/srcsite/A26/s8001/202204/t20220420_619921.html,2026-09-01,high,citation-only,历史课程核心素养,时空观念史料实证历史解释
+edu-002,all,义务教育历史课程标准（2022年版）,教育部,standard,2022-04-20,https://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220420582345700037.pdf,2026-09-01,high,citation-only,历史学习目标,需保存版本信息
+map-001,all,天地图国家地理信息公共服务平台,自然资源部相关平台,official-map,,https://www.tianditu.gov.cn/,2026-09-01,high,permission-needed,合规在线底图,使用tk与服务条款需另审
+map-002,all,标准地图服务系统,自然资源部,official-map,,http://bzdt.ch.mnr.gov.cn/,2026-09-01,high,permission-needed,静态地图与审图参考,公开使用需确认审图号
+dem-001,all,SRTMGL1 V003,NASA,dem,,https://www.earthdata.nasa.gov/data/catalog/lpcloud-srtmgl1-003,2026-09-01,high,cleared,开放DEM地形派生,按政策署名
+dem-002,all,Copernicus DEM,Copernicus Data Space,dem,,https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM,2026-09-01,high,permission-needed,开放DEM候选,遵守CCM许可与来源声明
