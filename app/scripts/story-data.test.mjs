@@ -67,14 +67,20 @@ test("DEM preprocessing produces three valid contour levels", async () => {
 test("map exposes contour layers, layer controls, and compact zoom-aware markers", async () => {
   const styleText = await readFile(new URL("../src/map/style.ts", import.meta.url), "utf8");
   const mapText = await readFile(new URL("../src/map/MapCanvas.tsx", import.meta.url), "utf8");
+  const terrainRuntimeText = await readFile(new URL("../src/map/terrainRuntime.ts", import.meta.url), "utf8");
   const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
   const cssText = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
 
-  assert.ok(styleText.includes("contour-200.geojson"));
-  assert.ok(styleText.includes("contour-major"));
+  assert.ok(!styleText.includes('data: "terrain/contour-200.geojson"'));
+  assert.ok(styleText.includes('contours: ["contour-major", "contour-mid", "contour-fine"]'));
+  assert.ok(terrainRuntimeText.includes("contour-200.geojson"));
+  assert.ok(terrainRuntimeText.includes("contour-100.geojson"));
+  assert.ok(terrainRuntimeText.includes("contour-50.geojson"));
+  assert.ok(mapText.includes("ensureMajorContours"));
+  assert.ok(mapText.includes("ensureDetailContours"));
   assert.ok(mapText.includes("NavigationControl"));
   assert.ok(mapText.includes("ScaleControl"));
-  assert.ok(mapText.includes("contour-labels.geojson"));
+  assert.ok(mapText.includes("loadContourLabels"));
   assert.ok(mapText.includes("contour-elevation-label"));
   assert.ok(appText.includes("LayerPanel"));
   assert.ok(cssText.includes(".story-marker") && cssText.includes("width: 16px"));
@@ -102,6 +108,7 @@ test("editorial title system replaces the flat toolbar heading", async () => {
 test("natural topographic base uses elevation tint and restrained multidirectional relief", async () => {
   const terrainScript = await readFile(new URL("./build-terrain.mjs", import.meta.url), "utf8");
   const styleText = await readFile(new URL("../src/map/style.ts", import.meta.url), "utf8");
+  const terrainRuntimeText = await readFile(new URL("../src/map/terrainRuntime.ts", import.meta.url), "utf8");
   const layerPanelText = await readFile(new URL("../src/components/LayerPanel.tsx", import.meta.url), "utf8");
   const tint = new URL("../public/terrain/terrain-tint.png", import.meta.url);
 
@@ -109,11 +116,13 @@ test("natural topographic base uses elevation tint and restrained multidirection
   assert.ok(tintBytes.length > 100000, "terrain tint raster is missing or empty");
   assert.ok(terrainScript.includes("MULTI_AZIMUTHS"));
   assert.ok(terrainScript.includes("ELEVATION_COLORS"));
-  assert.ok(styleText.includes("terrainColorDem"));
+  assert.ok(!styleText.includes("terrainColorDem"));
   assert.ok(styleText.includes('type: "image"'));
   assert.ok(styleText.includes("offlineTerrainTint"));
   assert.ok(styleText.includes("offline-terrain-color"));
   assert.ok(styleText.includes("offline-terrain-relief"));
+  assert.ok(terrainRuntimeText.includes('type: "raster-dem"'));
+  assert.ok(terrainRuntimeText.includes("terrainDem"));
   assert.ok(styleText.includes('"raster-opacity": 0.38'));
   assert.ok(styleText.includes('["get", "scalerank"]'));
   assert.ok(layerPanelText.includes("高程分层设色"));
@@ -133,8 +142,13 @@ test("map cartouche is visually separated from controls and geographic labels ar
   assert.ok(cssText.includes(".geo-label.river"));
 });
 
-test("DOM map labels initialize on style load without waiting for large contour sources", async () => {
+test("DOM contour labels load at runtime after style load instead of blocking first paint", async () => {
   const mapText = await readFile(new URL("../src/map/MapCanvas.tsx", import.meta.url), "utf8");
+  const runtimeText = await readFile(new URL("../src/map/terrainRuntime.ts", import.meta.url), "utf8");
   assert.ok(mapText.includes('map.once("style.load"'));
+  assert.ok(mapText.includes('loadedMap.on("idle"'));
+  assert.ok(mapText.includes("loadContourLabels"));
+  assert.ok(!mapText.includes('fetch("terrain/contour-labels.geojson")'));
+  assert.ok(runtimeText.includes('fetch("terrain/contour-labels.geojson")'));
   assert.ok(!mapText.includes('map.on("load"'));
 });

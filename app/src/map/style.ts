@@ -35,7 +35,7 @@ export const ROUTE_LAYER_IDS = routeGeometry.flatMap((line) =>
 );
 
 export const MAP_LAYER_IDS: Record<MapLayerKey, string[]> = {
-  terrain: ["offline-terrain-color", "offline-terrain-relief", "global-terrain-color", "terrain-relief"],
+  terrain: ["offline-terrain-color", "offline-terrain-relief"],
   contours: ["contour-major", "contour-mid", "contour-fine"],
   water: ["lakes-fill", "rivers-line"],
   route: ROUTE_LAYER_IDS,
@@ -59,50 +59,6 @@ export async function probeHillshade(): Promise<HillshadeBbox | null> {
   } catch {
     return null;
   }
-}
-
-function onlineTerrainLayers() {
-  return [
-    {
-      id: "global-terrain-color",
-      type: "color-relief",
-      source: "terrainColorDem",
-      paint: {
-        "color-relief-opacity": 0.9,
-        "color-relief-color": [
-          "interpolate",
-          ["linear"],
-          ["elevation"],
-          -11000, "#B9CBD4",
-          -1000, "#CEDCE1",
-          0, "#DCE7E5",
-          1, "#D4E0C8",
-          200, "#DCE5C5",
-          600, "#CFD7B2",
-          1200, "#D3CAA6",
-          2000, "#C9BA97",
-          3000, "#B8AC98",
-          4000, "#C7C3BA",
-          5400, "#EBEBE5"
-        ],
-        "resampling": "linear",
-      },
-    },
-    {
-      id: "terrain-relief",
-      type: "hillshade",
-      source: "terrainDem",
-      paint: {
-        "hillshade-exaggeration": 0.1,
-        "hillshade-shadow-color": "#5C5F52",
-        "hillshade-highlight-color": "#FCFAF5",
-        "hillshade-accent-color": "#8C8F7C",
-        "hillshade-illumination-direction": 315,
-        "hillshade-method": "multidirectional",
-        "resampling": "linear",
-      },
-    },
-  ] as const;
 }
 
 // 经纬网（5°间隔，纯地理坐标网格，不含任何行政边界）
@@ -131,26 +87,6 @@ export function buildStyle(hillshade: HillshadeBbox | null): StyleSpecification 
     rivers: { type: "geojson", data: "geo/rivers.json" },
     lakes: { type: "geojson", data: "geo/lakes.json" },
     graticule: { type: "geojson", data: graticule() },
-    contourMajor: { type: "geojson", data: "terrain/contour-200.geojson" },
-    contourMid: { type: "geojson", data: "terrain/contour-100.geojson" },
-    contourFine: { type: "geojson", data: "terrain/contour-50.geojson" },
-    // 3D 地形 DEM（开放数据，运行时在线）
-    terrainDem: {
-      type: "raster-dem",
-      tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
-      encoding: "terrarium",
-      tileSize: 256,
-      maxzoom: 13,
-      attribution: "Elevation: AWS Terrain Tiles, SRTM and NASADEM derived",
-    },
-    terrainColorDem: {
-      type: "raster-dem",
-      tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
-      encoding: "terrarium",
-      tileSize: 256,
-      maxzoom: 13,
-      attribution: "Elevation: AWS Terrain Tiles, SRTM and NASADEM derived",
-    },
   };
 
   if (hillshade) {
@@ -230,8 +166,6 @@ export function buildStyle(hillshade: HillshadeBbox | null): StyleSpecification 
         },
       }
     );
-  } else {
-    layers.push(...onlineTerrainLayers());
   }
 
   layers.push(
@@ -240,39 +174,6 @@ export function buildStyle(hillshade: HillshadeBbox | null): StyleSpecification 
       type: "line",
       source: "land",
       paint: { "line-color": C.archiveLine, "line-width": 0.8, "line-opacity": 0.78 },
-    },
-    {
-      id: "contour-major",
-      type: "line",
-      source: "contourMajor",
-      minzoom: 4.6,
-      paint: {
-        "line-color": "#6F735F",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 4.6, 0.32, 8, 0.75, 11, 1.15],
-        "line-opacity": ["interpolate", ["linear"], ["zoom"], 4.6, 0.18, 6, 0.38, 9, 0.55],
-      },
-    },
-    {
-      id: "contour-mid",
-      type: "line",
-      source: "contourMid",
-      minzoom: 6.4,
-      paint: {
-        "line-color": "#858873",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 6.4, 0.25, 10, 0.72],
-        "line-opacity": ["interpolate", ["linear"], ["zoom"], 6.4, 0, 7.2, 0.3, 10, 0.46],
-      },
-    },
-    {
-      id: "contour-fine",
-      type: "line",
-      source: "contourFine",
-      minzoom: 8.1,
-      paint: {
-        "line-color": "#989A86",
-        "line-width": 0.42,
-        "line-opacity": ["interpolate", ["linear"], ["zoom"], 8.1, 0, 9, 0.25, 12, 0.36],
-      },
     },
     {
       id: "graticule",

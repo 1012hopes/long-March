@@ -68,3 +68,30 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 - `npm run test:map`：PASS（2 个断言通过）。
 - `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-DNGvmrT_.js` gzip 392.83 kB）。
 - `git diff --check`：PASS（无空白错误；仅有 Git 的 LF→CRLF 提示）。
+
+## Task 3 结果（重资源移出首屏）
+
+- `app/src/map/style.ts` 不再在 `buildStyle()` 中声明 `terrainDem`、`terrainColorDem`、`contourMajor`、`contourMid`、`contourFine`；当本地 bbox 缺失时，首屏只保留纸面底图、水系与路线。
+- 新增 `app/src/map/terrainRuntime.ts`，集中提供 `ensureMajorContours()`、`ensureDetailContours()`、`ensureOnlineTerrain()` 与 `loadContourLabels()`；等高线运行时按阈值注入，在线 DEM 仅在 3D 切换时按需创建。
+- `ensureMajorContours()` 负责 200 米等高线；`ensureDetailContours()` 仅在 `zoom >= 7.2` 时加入 100 米、`zoom >= 8.5` 时加入 50 米，重复调用不会重复注册 source/layer。
+- `MapCanvas` 现在在 `style.load` 后继续初始化节点与故事，但把 200 米等高线和高程标注推迟到 `idle` 或 900ms 兜底定时器之后，再按当前缩放补齐 100/50 米等高线。
+- 3D 切换改为先 `await ensureOnlineTerrain()`；若在线 DEM 超时或报错，函数返回 `offline`，React 侧只显示既有离线提示，不再依赖首屏默认在线 terrain source。
+- 图层显隐逻辑继续复用 `MAP_LAYER_IDS`，运行时新增的 `contour-major` / `contour-mid` / `contour-fine` 会立刻套用当前“等高线”开关状态；高程标注 DOM marker 也继续受“等高线 + 地名山系”双开关控制。
+
+## Task 3 请求/加载顺序
+
+1. 首屏仅预探测 `terrain/hillshade-bbox.json`。
+2. 若 bbox 存在，底图立即使用 `terrain-tint.png` 与 `hillshade.png` 两个离线 `image` source。
+3. 地图进入 `style.load` 后先完成节点、故事、地理标签与交互绑定。
+4. 地图 `idle`（或 900ms 兜底）后，运行时再挂载 `contour-200.geojson` 与 `contour-labels.geojson`。
+5. 用户缩放到 `7.2` / `8.5` 以上时，运行时分别补挂 `contour-100.geojson` / `contour-50.geojson`。
+6. 只有用户开启 3D 时，才按需创建在线 `terrainDem` source 并等待其成功或离线超时结果。
+
+## Task 3 验证证据
+
+- `npm run test:loading`：PASS（10 个断言通过，覆盖首屏 source 移除、运行时阈值、在线 DEM 超时与移除后安全性）。
+- `npm run test:stories`：PASS（8 个断言通过，契约更新为运行时 contour/DEM 挂载）。
+- `npm run test:map`：PASS（2 个断言通过）。
+- `npm run test:timeline`：PASS（13 个断言通过）。
+- `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-QAtMZVbu.js` gzip 393.46 kB）。
+- `git diff --check`：PASS（无空白错误；仅有 Git 的 LF→CRLF 提示）。

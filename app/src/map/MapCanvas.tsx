@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import maplibregl, { type Map as MlMap, type LngLatBoundsLike } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { buildStyle, MAP_LAYER_IDS, probeHillshade } from "./style";
+import { ensureDetailContours, ensureMajorContours, ensureOnlineTerrain, loadContourLabels } from "./terrainRuntime";
 import routeGeometry from "../data/route-geometry.json";
 import { nodes, epilogue } from "../data/nodes";
 import { stories } from "../data/stories";
@@ -106,7 +107,15 @@ export default function MapCanvas(props: Props) {
   const gesturedRef = useRef(false);
   const [ready, setReady] = useState(false);
   const propsRef = useRef(props);
+  const contourRuntimeStartedRef = useRef(false);
+  const terrainErrorReportedRef = useRef(false);
   propsRef.current = props;
+
+  const reportTerrainOffline = () => {
+    if (terrainErrorReportedRef.current) return;
+    terrainErrorReportedRef.current = true;
+    propsRef.current.onTerrainError?.();
+  };
 
   // 初始化
   useEffect(() => {
@@ -155,7 +164,12 @@ export default function MapCanvas(props: Props) {
           label.classList.toggle("zoom-hidden", state.level !== "detail");
         }
       };
+      const syncRuntimeContours = () => {
+        if (!map || !contourRuntimeStartedRef.current) return;
+        void ensureDetailContours(map, map.getZoom(), propsRef.current.layers.contours);
+      };
       map.on("zoom", syncZoomDensity);
+      map.on("zoom", syncRuntimeContours);
       syncZoomDensity();
 
       const gesture = () => {
@@ -166,14 +180,9 @@ export default function MapCanvas(props: Props) {
         map.on(ev as never, gesture);
       }
 
-      // 在线 DEM 拉取失败（离线课堂 / 网络受限）时向上层汇报一次，用于降级提示。
-      let terrainErrorReported = false;
       map.on("error", (event: { sourceId?: string }) => {
         const sourceId = event.sourceId;
-        if (!terrainErrorReported && (sourceId === "terrainDem" || sourceId === "terrainColorDem")) {
-          terrainErrorReported = true;
-          propsRef.current.onTerrainError?.();
-        }
+        if (sourceId === "terrainDem") reportTerrainOffline();
       });
 
       map.once("style.load", () => {
@@ -278,25 +287,43 @@ export default function MapCanvas(props: Props) {
           geoRefs.current.push(el);
         }
 
-        fetch("terrain/contour-labels.geojson")
-          .then((response) => response.json())
-          .then((data: GeoJSON.FeatureCollection<GeoJSON.Point, { elevation: number }>) => {
-            if (disposed) return;
-            for (const feature of data.features) {
-              const elevation = feature.properties?.elevation;
-              if (typeof elevation !== "number") continue;
-              const el = makeMarker("contour-elevation-label", elevation + " m");
-              el.classList.toggle("hidden", !propsRef.current.layers.contours || !propsRef.current.layers.labels);
-              el.classList.toggle("zoom-hidden", loadedMap.getZoom() < 7.4);
-              new maplibregl.Marker({ element: el, anchor: "center" })
-                .setLngLat(feature.geometry.coordinates as [number, number])
-                .addTo(loadedMap);
-              contourLabelRefs.current.push(el);
-            }
-          })
-          .catch(() => {
-            /* 等高线数字标注加载失败时保留线条 */
-          });
+        const loadContourLabelsWhenIdle = async () => {
+          const data = await loadContourLabels();
+          if (disposed || !data || contourLabelRefs.current.length > 0) return;
+          for (const feature of data.features) {
+            const elevation = feature.properties?.elevation;
+            if (typeof elevation !== "number") continue;
+            const el = makeMarker("contour-elevation-label", elevation + " m");
+            el.classList.toggle("hidden", !propsRef.current.layers.contours || !propsRef.current.layers.labels);
+            el.classList.toggle("zoom-hidden", loadedMap.getZoom() < 7.4);
+            new maplibregl.Marker({ element: el, anchor: "center" })
+              .setLngLat(feature.geometry.coordinates as [number, number])
+              .addTo(loadedMap);
+            contourLabelRefs.current.push(el);
+          }
+          syncZoomDensity();
+        };
+
+        const activateRuntimeContours = () => {
+          if (disposed || contourRuntimeStartedRef.current) return;
+          contourRuntimeStartedRef.current = true;
+          loadedMap.off("idle", activateRuntimeContours);
+          window.clearTimeout(contourKickoffTimer);
+          void ensureMajorContours(loadedMap, propsRef.current.layers.contours)
+            .then(() => loadContourLabelsWhenIdle())
+            .then(() => ensureDetailContours(loadedMap, loadedMap.getZoom(), propsRef.current.layers.contours))
+            .catch(() => {
+              /* 轮廓线运行时按需加载，失败时保留纸面底图 */
+            });
+        };
+        const contourKickoffTimer = window.setTimeout(activateRuntimeContours, 900);
+        loadedMap.on("idle", activateRuntimeContours);
+        loadedMap.once("remove", () => {
+          window.clearTimeout(contourKickoffTimer);
+          loadedMap.off("idle", activateRuntimeContours);
+          loadedMap.off("zoom", syncZoomDensity);
+          loadedMap.off("zoom", syncRuntimeContours);
+        });
 
         const routePopup = new maplibregl.Popup({
           closeButton: false,
@@ -400,6 +427,8 @@ export default function MapCanvas(props: Props) {
       disposed = true;
       map?.remove();
       mapRef.current = null;
+      contourRuntimeStartedRef.current = false;
+      terrainErrorReportedRef.current = false;
       markerRefs.current.clear();
       storyRefs.current.clear();
       secondaryRefs.current = [];
@@ -509,6 +538,10 @@ export default function MapCanvas(props: Props) {
     setLayers(MAP_LAYER_IDS.contours, props.layers.contours);
     setLayers(MAP_LAYER_IDS.water, props.layers.water);
     setLayers(MAP_LAYER_IDS.route, props.layers.route);
+    if (contourRuntimeStartedRef.current) {
+      void ensureMajorContours(map, props.layers.contours);
+      void ensureDetailContours(map, map.getZoom(), props.layers.contours);
+    }
     for (const marker of geoRefs.current) marker.classList.toggle("hidden", !props.layers.labels);
     for (const marker of secondaryRefs.current) marker.classList.toggle("hidden", !props.layers.nodes);
     for (const marker of contourLabelRefs.current) {
@@ -536,21 +569,50 @@ export default function MapCanvas(props: Props) {
     const map = mapRef.current;
     if (!map || !ready) return;
     const reduceMotion = prefersReducedMotion();
-    if (props.terrain3d) {
-      map.setTerrain({ source: "terrainDem", exaggeration: 1.3 });
-      if (reduceMotion) {
-        map.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: 52 });
-      } else {
-        map.easeTo({ pitch: 52, duration: CAMERA_MOTION_MS });
+    let cancelled = false;
+    const syncTerrain = async () => {
+      if (props.terrain3d) {
+        const status = await ensureOnlineTerrain(map);
+        if (cancelled) return;
+        if (status !== "ready") {
+          reportTerrainOffline();
+          try {
+            map.setTerrain(null);
+          } catch {
+            /* map removed while leaving 3D mode */
+          }
+          return;
+        }
+        terrainErrorReportedRef.current = false;
+        try {
+          map.setTerrain({ source: "terrainDem", exaggeration: 1.3 });
+        } catch {
+          reportTerrainOffline();
+          return;
+        }
+        if (reduceMotion) {
+          map.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: 52 });
+        } else {
+          map.easeTo({ pitch: 52, duration: CAMERA_MOTION_MS });
+        }
+        return;
       }
-    } else {
-      map.setTerrain(null);
+      terrainErrorReportedRef.current = false;
+      try {
+        map.setTerrain(null);
+      } catch {
+        return;
+      }
       if (reduceMotion) {
         map.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: 0 });
       } else {
         map.easeTo({ pitch: 0, duration: CAMERA_MOTION_MS });
       }
-    }
+    };
+    void syncTerrain();
+    return () => {
+      cancelled = true;
+    };
   }, [props.terrain3d, ready]);
 
   // 巡航：进入或换段时，镜头贴路线低空滑翔到段尾（时长与该段剩余播放时间对齐）。
