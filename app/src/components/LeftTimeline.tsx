@@ -35,6 +35,9 @@ const SCALE_TICKS = [
 const prefersReducedMotion = () =>
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
+const isMobileViewport = () =>
+  window.matchMedia?.("(max-width: 900px)").matches ?? window.innerWidth <= 900;
+
 export default function LeftTimeline(p: Props) {
   const listRef = useRef<HTMLOListElement>(null);
   const markers = useMemo(() => timelineMarkers(), []);
@@ -55,6 +58,7 @@ export default function LeftTimeline(p: Props) {
 
   useEffect(() => {
     if (p.collapsed) return;
+    if (isMobileViewport() && !p.mobileOpen) return;
     if (!p.selectedNodeId) return;
     if (p.suppressInitialSelectedScroll) return;
     const el = listRef.current?.querySelector<HTMLLIElement>(`[data-node="${p.selectedNodeId}"]`);

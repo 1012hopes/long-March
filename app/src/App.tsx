@@ -614,7 +614,7 @@ export default function App() {
               setMobileTimelineOpen(false);
             }}
           />
-          {mode !== "tour" && (
+          {mode !== "tour" && !effectiveRightView && (
             <button
               className="mobile-sheet-toggle"
               onClick={() => setMobileTimelineOpen((v) => !v)}

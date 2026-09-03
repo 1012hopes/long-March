@@ -137,6 +137,7 @@ test("app scopes the restored selected-node scroll suppression to the initial pa
   assert.match(appText, /suppressInitialSelectedScrollRef\.current = false;/);
   assert.ok(!leftText.includes("const suppressInitialSelectedScrollRef = useRef(true);"));
   assert.match(leftText, /suppressInitialSelectedScroll/);
+  assert.match(leftText, /isMobileViewport\(\) && !p\.mobileOpen/);
 });
 
 test("left timeline markers use 44px hit areas while keeping a compact visible dot", async () => {
@@ -150,7 +151,7 @@ test("app hides the mobile timeline toggle in tour mode and shares the normalize
   const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
 
   assert.ok(appText.includes("onTimelineChange={onTimelineChange}"));
-  assert.ok(appText.includes('{mode !== "tour" && ('));
+  assert.ok(appText.includes('{mode !== "tour" && !effectiveRightView && ('));
   assert.ok(appText.includes('!focusMode && mode !== "sources" && ('));
   assert.match(appText, /setMobileTimelineOpen\(false\)/);
 });
