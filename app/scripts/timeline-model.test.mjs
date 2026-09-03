@@ -42,10 +42,11 @@ test("clampTimelineT keeps values inside the unit interval", () => {
 test("App separates timelineT from revealT and keeps explore mode pinned to revealT=1", async () => {
   const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
 
+  assert.match(appText, /function resolveTimelineAndRevealFromHash\(params: HashParams\)/);
   assert.match(appText, /const \[timelineT, setTimelineT\]/);
   assert.match(appText, /const \[revealT, setRevealT\]/);
-  assert.match(appText, /resolveRevealFromHash\(initialHash\)/);
-  assert.match(appText, /params\.mode === "explore" \? 1 : timelineFromHash/);
+  assert.match(appText, /resolveTimelineAndRevealFromHash\(initialHash\)/);
+  assert.match(appText, /resolveTimelineAndRevealFromHash\(params\)/);
   assert.match(appText, /setTimelineT\(next\)/);
   assert.match(appText, /setRevealT\(next\)/);
 });

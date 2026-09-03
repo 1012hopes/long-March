@@ -89,6 +89,16 @@ function resolveRevealFromHash(params: HashParams): number {
   return params.mode === "explore" ? 1 : params.timelineT;
 }
 
+function resolveTimelineAndRevealFromHash(params: HashParams): { timelineT: number; revealT: number } {
+  const timelineT =
+    typeof params.timelineT === "number"
+      ? params.timelineT
+      : typeof params.revealT === "number"
+        ? params.revealT
+        : 1;
+  return { timelineT, revealT: resolveRevealFromHash({ ...params, timelineT }) };
+}
+
 function nodeAtTimelineT(t: number): NodeUnit {
   let current = nodes[0];
   for (const node of nodes) {
@@ -100,10 +110,11 @@ function nodeAtTimelineT(t: number): NodeUnit {
 export default function App() {
   // 初始状态允许从 URL hash 恢复（分享链接 / 刷新不丢状态）
   const initialHash = useMemo(() => parseHash(window.location.hash), []);
+  const initialTimelineState = useMemo(() => resolveTimelineAndRevealFromHash(initialHash), [initialHash]);
   const [mode, setMode] = useState<Mode>(initialHash.mode ?? "explore");
   const [tourIndex, setTourIndex] = useState(initialHash.tourIndex ?? 0);
-  const [timelineT, setTimelineT] = useState(initialHash.timelineT ?? 1);
-  const [revealT, setRevealT] = useState(resolveRevealFromHash(initialHash));
+  const [timelineT, setTimelineT] = useState(initialTimelineState.timelineT);
+  const [revealT, setRevealT] = useState(initialTimelineState.revealT);
   const [playing, setPlaying] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(initialHash.nodeId ?? null);
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(initialHash.storyId ?? null);
@@ -439,16 +450,9 @@ export default function App() {
         setRightView(params.mode === "sources" ? { type: "sources" } : null);
       }
       if (params.mode) setMode(params.mode);
-      const timelineFromHash =
-        typeof params.timelineT === "number"
-          ? params.timelineT
-          : typeof params.revealT === "number"
-            ? params.revealT
-            : undefined;
-      if (typeof timelineFromHash === "number") setTimelineT(timelineFromHash);
-      if (typeof params.revealT === "number") setRevealT(params.revealT);
-      else if (typeof timelineFromHash === "number") setRevealT(params.mode === "explore" ? 1 : timelineFromHash);
-      else if (params.mode === "explore") setRevealT(1);
+      const resolved = resolveTimelineAndRevealFromHash(params);
+      setTimelineT(resolved.timelineT);
+      setRevealT(resolved.revealT);
       if (params.mode === "tour") {
         setTourIndex(params.tourIndex ?? 0);
         applyTourStop(params.tourIndex ?? 0);
