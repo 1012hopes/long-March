@@ -130,6 +130,24 @@ body {
   letter-spacing: 0.06em;
 }
 
+.node-scene-cartouche-place {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--route-red);
+  font: 700 11px/1.4 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.node-scene-cartouche-place-value {
+  color: var(--ink);
+  font: 600 13px/1.4 var(--serif);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
 .node-scene-cartouche-cue {
   margin-top: 9px;
   padding-top: 9px;
@@ -2032,14 +2050,21 @@ li.current .tl-title {
 
 @media (max-width: 900px) {
   .node-scene-cartouche {
-    top: 76px;
+    top: 122px;
     left: 10px;
-    width: min(300px, calc(100vw - 20px));
+    right: 10px;
+    width: auto;
+    max-width: none;
     padding: 10px 11px 12px;
   }
 
   .node-scene-cartouche h2 {
     font-size: 20px;
+  }
+
+  .node-scene-cartouche-place {
+    flex-wrap: wrap;
+    gap: 4px 8px;
   }
 
   .map-scene-annotation {

@@ -146,5 +146,6 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 - 截图：`E:\数媒\长征一条路的来处\.omx\screenshots\node-map-terrain\node-05-1440x900.png`
 - 截图：`E:\数媒\长征一条路的来处\.omx\screenshots\node-map-terrain\node-08-1440x900.png`
 - 截图：`E:\数媒\长征一条路的来处\.omx\screenshots\node-map-terrain\node-05-390x844.png`
-- 视觉评分：91/100
+- 视觉评分：94/100
 - 主要保留项：少数节点上 scene cartouche 与地图标签仍略密，`node-08` 这类场景在小屏下仍需留意标注重叠。
+- 复核说明：`390x844` 的 `node-05` 现在显示了独立地点行，且卡片没有越界。

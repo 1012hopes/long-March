@@ -238,6 +238,22 @@ export function sceneReadingCue(scene: NodeMapScene): string {
   return "先顺着主线读图。";
 }
 
+export function scenePlaceLabel(scene: NodeMapScene, node: NodeUnit): string {
+  const labels: string[] = [];
+  for (const annotation of scene.annotations) {
+    if (annotation.kind === "direction") continue;
+    if (!labels.includes(annotation.label)) labels.push(annotation.label);
+    if (labels.length === 2) return labels.join(" · ");
+  }
+
+  for (const secondary of node.secondary) {
+    if (!labels.includes(secondary.name)) labels.push(secondary.name);
+    if (labels.length === 2) return labels.join(" · ");
+  }
+
+  return labels[0] ?? node.shortTitle;
+}
+
 export function applyNodeScene(map: SceneMapLike, scene: NodeMapScene): void {
   ensureSceneLayers(map, scene);
 

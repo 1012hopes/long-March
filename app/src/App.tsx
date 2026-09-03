@@ -19,6 +19,7 @@ import { narrationFor } from "./data/narration";
 import { startAmbient, stopAmbient } from "./audio/ambient";
 import { SEG_PRIMARY_LINE } from "./map/cruise";
 import { getRightPanelPresentation } from "./layout/rightPanelPresentation";
+import { scenePlaceLabel } from "./map/nodeScenePresentation";
 
 const CAMERA_MOTION_MS = 1400;
 const TOUR_CAMERA_MOTION_MS = 1500;
@@ -519,6 +520,7 @@ export default function App() {
   const selectedNode = selectedNodeId ? nodes.find((item) => item.id === selectedNodeId) : null;
   const selectedNodeScene = selectedNodeId ? sceneForNode(selectedNodeId) : null;
   const activeNodeScene = effectiveRightView?.type === "node" ? selectedNodeScene : null;
+  const activeNodePlaceLabel = activeNodeScene && selectedNode ? scenePlaceLabel(activeNodeScene, selectedNode) : "";
   const revealTitle = selectedStory?.title ?? selectedNode?.title ?? null;
   const revealMeta = selectedStory
     ? selectedStory.dateLabel + " / " + selectedStory.place
@@ -574,7 +576,7 @@ export default function App() {
       />
 
       {activeNodeScene && selectedNode && !focusMode && (
-        <NodeSceneCartouche node={selectedNode} scene={activeNodeScene} />
+        <NodeSceneCartouche node={selectedNode} scene={activeNodeScene} placeLabel={activeNodePlaceLabel} />
       )}
 
       {revealTitle && (

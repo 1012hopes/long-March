@@ -12,6 +12,7 @@ import {
   annotationPresentation,
   applyNodeScene,
   clearNodeScene,
+  scenePlaceLabel,
   routeSceneRole,
 } from "../src/map/nodeScenePresentation.ts";
 
@@ -213,6 +214,15 @@ test("annotation presentation exposes kind styling and approximate accessible wo
   assert.equal(confirmed.glyph, "渡");
   assert.doesNotMatch(confirmed.className, /approximate/);
   assert.doesNotMatch(confirmed.ariaLabel, /约略位置/);
+});
+
+test("scene place labels stay explicit and reuse existing node or annotation names", () => {
+  const scene = sceneForNode("node-05");
+  const node = nodes.find((item) => item.id === "node-05");
+
+  assert.ok(scene);
+  assert.ok(node);
+  assert.equal(scenePlaceLabel(scene, node), "娄山关 · 太平渡");
 });
 
 test("applying and clearing a node scene manages annotation layers and preserves disputed candidate styling", () => {
