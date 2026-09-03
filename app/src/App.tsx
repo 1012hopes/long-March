@@ -315,6 +315,7 @@ export default function App() {
       setMode(m);
       setPlaying(false);
       setFocusMode(false);
+      setMobileTimelineOpen(false);
       setSelectedStoryId(null);
       if (m !== "tour") setRevealT(1);
       if (m === "tour") {
@@ -601,19 +602,21 @@ export default function App() {
             collapsed={leftCollapsed || mode === "tour"}
             mobileOpen={mobileTimelineOpen}
             onToggleCollapse={() => setLeftCollapsed((v) => !v)}
-            onTimelineChange={setTimelineT}
+            onTimelineChange={onTimelineChange}
             onSelect={(id) => {
               selectNode(id);
               setMobileTimelineOpen(false);
             }}
           />
-          <button
-            className="mobile-sheet-toggle"
-            onClick={() => setMobileTimelineOpen((v) => !v)}
-            aria-expanded={mobileTimelineOpen}
-          >
-            {mobileTimelineOpen ? "▾ 收起时间与节点" : "▴ 时间与节点"}
-          </button>
+          {mode !== "tour" && (
+            <button
+              className="mobile-sheet-toggle"
+              onClick={() => setMobileTimelineOpen((v) => !v)}
+              aria-expanded={mobileTimelineOpen}
+            >
+              {mobileTimelineOpen ? "▾ 收起时间与节点" : "▴ 时间与节点"}
+            </button>
+          )}
         </>
       )}
 

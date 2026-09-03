@@ -127,3 +127,19 @@ test("motion stays event-driven and honors reduced-motion camera fallbacks", asy
   assert.match(mapText, /jumpTo\(/);
   assert.match(appText, /setCameraReq\(/);
 });
+
+test("left timeline markers use 44px hit areas while keeping a compact visible dot", async () => {
+  const cssText = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
+
+  assert.match(cssText, /\.timeline-marker\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
+  assert.match(cssText, /\.timeline-marker-dot\s*\{[\s\S]*width:\s*11px;[\s\S]*height:\s*11px;/);
+});
+
+test("app hides the mobile timeline toggle in tour mode and shares the normalized timeline handler", async () => {
+  const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+
+  assert.ok(appText.includes("onTimelineChange={onTimelineChange}"));
+  assert.ok(appText.includes('{mode !== "tour" && ('));
+  assert.ok(appText.includes('!focusMode && mode !== "sources" && ('));
+  assert.match(appText, /setMobileTimelineOpen\(false\)/);
+});
