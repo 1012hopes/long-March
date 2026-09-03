@@ -1,4 +1,4 @@
-import storyData from "./stories.json";
+import storyData from "./stories.json" with { type: "json" };
 
 export type StoryKind = "decision" | "march" | "battle" | "crossing" | "people" | "terrain" | "meeting";
 export type StoryPrecision = "confirmed" | "approximate";

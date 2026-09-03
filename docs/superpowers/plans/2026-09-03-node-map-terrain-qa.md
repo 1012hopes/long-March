@@ -97,3 +97,27 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 - `npm run test:timeline`：PASS（13 个断言通过）。
 - `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-QAtMZVbu.js` gzip 393.46 kB）。
 - `git diff --check`：PASS（无空白错误；仅有 Git 的 LF→CRLF 提示）。
+
+## Task 4 结果（九节点地图场景台账）
+
+- 新增 `app/src/data/nodeScenes.ts`，导出 `NodeSceneAnnotationKind`、`NodeMapScene`、`nodeScenes` 与 `sceneForNode()`，总计 9 条场景记录，与 `nodes.ts` 九个教学节点一一对应。
+- 每条场景都包含至少 1 个 `highlightedSegmentIds`、至少 2 条标注，并为后续 Task 5 预留了 `contextSegmentIds`、`terrainMode` 和局部 `focusBounds`。
+- `focusBounds` 未手填假精度坐标，而是由现有节点锚点、次级地点、故事点位和既有路线几何点外扩生成，并钳制在长征路线总范围内。
+- 确认类标注只复用现有可追溯点位：节点锚点、`secondary` 坐标或 `stories.json` 中的故事位置；方向类标注统一使用 `certainty: "approximate"`。
+- 地形模式当前按教学意图落位：`node-01/02/05/06/07` 为 `river-valley`，`node-03/08` 为 `mountain`，`node-04` 为 `plain`，`node-09` 为 `plateau`。
+- 新增 `app/scripts/node-scenes.test.mjs` 直接导入真实场景数据，验证九节点覆盖、`sceneForNode()` 查询、边界合法性、segment/source 引用有效性、全局唯一 annotation ID、确认/约略标注契约与标签长度约束。
+- 为了让 Node 测试路径与浏览器构建路径保持一致，`app/src/data/stories.ts` 的 JSON 导入改为显式 `with { type: "json" }`；`nodeScenes.ts` 也使用同样写法。
+
+## Task 4 仍需人工复核的点
+
+- `node-02` 的“湘江 / 西进突围”与 `node-04` 的“乌江 / 回师赤水”是基于现有走廊几何与史料阶段描述生成的近似标注，适合教学导览，但仍建议 GIS 人工确认最佳展签落点。
+- `node-05`、`node-07` 的河谷方向箭头与 `node-08`、`node-09` 的后续北上方向，当前使用现有路线折点表达“方向”而非新增渡口/山口精确坐标；后续若要进入公开发布底图，需继续人工复核。
+- `node-04` 的“桑木垭”与 `node-08` 的“懋功会师”保留为 `approximate`，因为现有故事点位与叙事范围能够支持教学定位，但不足以宣称会场/纪念地点精确落点。
+
+## Task 4 验证证据
+
+- `npm run test:scenes`：PASS（2 个断言通过，覆盖九节点完整性、lookup、bounds、segment/source 引用与确认/约略标注规则）。
+- `npm run test:loading`：PASS（11 个断言通过）。
+- `npm run test:stories`：PASS（8 个断言通过）。
+- `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-CU4BhB1s.js` gzip 393.56 kB）。
+- `git diff --check`：PASS（无空白错误；仅有 Git 的 LF→CRLF 提示）。
