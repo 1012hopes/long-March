@@ -83,20 +83,22 @@ function serializeHash(params: HashParams): string {
   return parts.length ? `#${parts.join("&")}` : "";
 }
 
-function resolveRevealFromHash(params: HashParams): number {
-  if (typeof params.revealT === "number") return params.revealT;
-  if (typeof params.timelineT !== "number") return 1;
-  return params.mode === "explore" ? 1 : params.timelineT;
-}
-
 function resolveTimelineAndRevealFromHash(params: HashParams): { timelineT: number; revealT: number } {
+  const mode = params.mode ?? "explore";
   const timelineT =
     typeof params.timelineT === "number"
       ? params.timelineT
       : typeof params.revealT === "number"
         ? params.revealT
         : 1;
-  return { timelineT, revealT: resolveRevealFromHash({ ...params, timelineT }) };
+  // `t` 始终表示阅读时间；缺省 mode 视为 explore，因此 reveal 不从 `t` 回填。
+  const revealT =
+    mode === "explore"
+      ? 1
+      : typeof params.revealT === "number"
+        ? params.revealT
+        : timelineT;
+  return { timelineT, revealT };
 }
 
 function nodeAtTimelineT(t: number): NodeUnit {
@@ -194,8 +196,12 @@ export default function App() {
 
   const togglePlay = useCallback(() => {
     const willPlay = !playingRef.current;
-    if (willPlay) {
-      const start = mode === "tour" ? revealRef.current : timelineRef.current >= 1 ? 0 : timelineRef.current;
+    // 到达结尾后重新播放时，重置两条时间线，但保留当前模式与导览停靠点。
+    if (willPlay && revealRef.current >= 1) {
+      setRevealT(0);
+      setTimelineT(0);
+    } else if (willPlay) {
+      const start = mode === "tour" ? revealRef.current : timelineRef.current;
       setRevealT(start);
       setTimelineT(start);
     }

@@ -43,10 +43,12 @@ test("App separates timelineT from revealT and keeps explore mode pinned to reve
   const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
 
   assert.match(appText, /function resolveTimelineAndRevealFromHash\(params: HashParams\)/);
+  assert.match(appText, /const mode = params\.mode \?\? "explore";/);
   assert.match(appText, /const \[timelineT, setTimelineT\]/);
   assert.match(appText, /const \[revealT, setRevealT\]/);
   assert.match(appText, /resolveTimelineAndRevealFromHash\(initialHash\)/);
   assert.match(appText, /resolveTimelineAndRevealFromHash\(params\)/);
+  assert.match(appText, /`t` 始终表示阅读时间；缺省 mode 视为 explore，因此 reveal 不从 `t` 回填。/);
   assert.match(appText, /setTimelineT\(next\)/);
   assert.match(appText, /setRevealT\(next\)/);
 });
@@ -66,6 +68,14 @@ test("tour mode locks the bottom scrubber instead of desynchronizing the timelin
   assert.match(appText, /<BottomPanel[\s\S]{0,120}scrubbingLocked=\{mode === "tour"\}/);
   assert.match(bottomText, /disabled=\{p\.scrubbingLocked\}/);
   assert.match(bottomText, /scrubbingLocked/);
+});
+
+test("play restarts from zero when revealT is already at the end", async () => {
+  const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+
+  assert.match(appText, /if \(willPlay && revealRef\.current >= 1\) \{/);
+  assert.match(appText, /setRevealT\(0\);\s*setTimelineT\(0\);/s);
+  assert.ok(!appText.includes("timelineRef.current >= 1 ? 0 : timelineRef.current"));
 });
 
 test("left rail renders a neutral track and current-time indicator instead of a completion fill", async () => {
