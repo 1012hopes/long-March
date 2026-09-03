@@ -42,6 +42,12 @@ type Props = {
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const transparentOf = (rgb: string) => rgb.replace("rgb(", "rgba(").replace(")", ",0)");
+const CAMERA_MOTION_MS = 1400;
+const ROUTE_REVEAL_MS = 1100;
+const PITCH_MOTION_MS = 900;
+
+const prefersReducedMotion = () =>
+  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
 // 开场路线脉冲：轻拂既有走廊图层（routeRedSoft，静态透明度 0.2），
 // 两个半周期后回落，把视线引向屏幕上的主线。
@@ -529,12 +535,21 @@ export default function MapCanvas(props: Props) {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
+    const reduceMotion = prefersReducedMotion();
     if (props.terrain3d) {
       map.setTerrain({ source: "terrainDem", exaggeration: 1.3 });
-      map.easeTo({ pitch: 52, duration: 1400 });
+      if (reduceMotion) {
+        map.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: 52 });
+      } else {
+        map.easeTo({ pitch: 52, duration: CAMERA_MOTION_MS });
+      }
     } else {
       map.setTerrain(null);
-      map.easeTo({ pitch: 0, duration: 1400 });
+      if (reduceMotion) {
+        map.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: 0 });
+      } else {
+        map.easeTo({ pitch: 0, duration: CAMERA_MOTION_MS });
+      }
     }
   }, [props.terrain3d, ready]);
 
@@ -543,6 +558,7 @@ export default function MapCanvas(props: Props) {
     const map = mapRef.current;
     if (!map || !ready || !props.cruise) return;
     const t = props.progress;
+    const reduceMotion = prefersReducedMotion();
     const seg = activeSegmentAt(t);
     const [w0, w1] = segmentWindow(seg);
     const lineId = SEG_PRIMARY_LINE[seg];
@@ -551,15 +567,19 @@ export default function MapCanvas(props: Props) {
     const startPose = cruisePose(seg, f);
     const endPose = cruisePose(seg, 1);
     map.jumpTo({ center: startPose.center, zoom: startPose.zoom, pitch: startPose.pitch, bearing: startPose.bearing });
-    map.easeTo({
-      center: endPose.center,
-      zoom: endPose.zoom,
-      pitch: endPose.pitch,
-      bearing: endPose.bearing,
-      duration: Math.max(1500, (w1 - t) * 42000),
-      easing: (x) => x, // 线性滑翔，与路线显影速度一致
-      essential: true,
-    });
+    if (reduceMotion) {
+      map.jumpTo({ center: endPose.center, zoom: endPose.zoom, pitch: endPose.pitch, bearing: endPose.bearing });
+    } else {
+      map.easeTo({
+        center: endPose.center,
+        zoom: endPose.zoom,
+        pitch: endPose.pitch,
+        bearing: endPose.bearing,
+        duration: Math.max(ROUTE_REVEAL_MS, (w1 - t) * 42000),
+        easing: (x) => x, // 线性滑翔，与路线显影速度一致
+        essential: true,
+      });
+    }
     // 仅在进入巡航或跨越段边界时重排镜头；段内滑翔交给 easeTo 本身。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.cruise, props.cruise ? activeSegmentAt(props.progress) : null, ready]);
@@ -569,7 +589,9 @@ export default function MapCanvas(props: Props) {
     const map = mapRef.current;
     const req = props.cameraReq;
     if (!map || !ready || !req) return;
+    const reduceMotion = prefersReducedMotion();
     const opts = { padding: props.padding, essential: true };
+    let pitchTimer = 0;
     if (req.bounds) {
       const b: LngLatBoundsLike = [
         [req.bounds[0], req.bounds[1]],
@@ -577,21 +599,38 @@ export default function MapCanvas(props: Props) {
       ];
       map.fitBounds(b, {
         ...opts,
-        duration: req.duration ?? 2200,
+        duration: reduceMotion ? 0 : req.duration ?? CAMERA_MOTION_MS,
         maxZoom: req.zoom ?? 9.2,
       });
       if (req.pitch !== undefined) {
-        setTimeout(() => map.easeTo({ pitch: req.pitch, duration: 900 }), (req.duration ?? 2200) * 0.7);
+        if (reduceMotion) {
+          map.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: req.pitch });
+        } else {
+          pitchTimer = window.setTimeout(
+            () => map.easeTo({ pitch: req.pitch, duration: PITCH_MOTION_MS }),
+            (req.duration ?? CAMERA_MOTION_MS) * 0.7
+          );
+        }
       }
     } else if (req.center) {
-      map.flyTo({
-        ...opts,
-        center: req.center,
-        zoom: req.zoom ?? 7.4,
-        pitch: req.pitch,
-        duration: req.duration ?? 2200,
-      });
+      if (reduceMotion) {
+        map.jumpTo({
+          center: req.center,
+          zoom: req.zoom ?? 7.4,
+          pitch: req.pitch ?? map.getPitch(),
+          bearing: map.getBearing(),
+        });
+      } else {
+        map.flyTo({
+          ...opts,
+          center: req.center,
+          zoom: req.zoom ?? 7.4,
+          pitch: req.pitch,
+          duration: req.duration ?? CAMERA_MOTION_MS,
+        });
+      }
     }
+    return () => window.clearTimeout(pitchTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.cameraReq?.seq, ready]);
 

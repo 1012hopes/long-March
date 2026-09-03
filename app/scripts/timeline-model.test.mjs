@@ -116,3 +116,14 @@ test("bottom scrubber provides a drag preview and 44px touch targets", async () 
   assert.ok(cssText.includes("min-width: 44px;"));
   assert.ok(cssText.includes(".scrub-preview"));
 });
+
+test("motion stays event-driven and honors reduced-motion camera fallbacks", async () => {
+  const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+  const leftText = await readFile(new URL("../src/components/LeftTimeline.tsx", import.meta.url), "utf8");
+  const mapText = await readFile(new URL("../src/map/MapCanvas.tsx", import.meta.url), "utf8");
+
+  assert.ok(!leftText.includes("activeNodeId"), "left timeline should not auto-scroll from timeline playback state");
+  assert.match(mapText, /prefers-reduced-motion: reduce/);
+  assert.match(mapText, /jumpTo\(/);
+  assert.match(appText, /setCameraReq\(/);
+});

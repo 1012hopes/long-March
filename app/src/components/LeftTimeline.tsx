@@ -36,12 +36,12 @@ const prefersReducedMotion = () =>
 
 export default function LeftTimeline(p: Props) {
   const listRef = useRef<HTMLOListElement>(null);
-  // 首次渲染不抢占阅读位置；之后跟随选中节点或当前时间定位。
+  // 首次渲染不抢占阅读位置；之后只在明确选中节点时跟随。
   const mountedRef = useRef(false);
   const markers = useMemo(() => timelineMarkers(), []);
 
   // 当前时间驱动的“节点脊柱”位置，按真实日期而非等间距列表。
-  const activeNodeId = useMemo(() => {
+  const currentNodeId = useMemo(() => {
     let current = markers[0]?.id ?? nodes[0].id;
     for (const marker of markers) {
       if (p.timelineT >= marker.t - 1e-6) current = marker.id;
@@ -56,14 +56,13 @@ export default function LeftTimeline(p: Props) {
 
   useEffect(() => {
     if (p.collapsed) return;
+    if (!p.selectedNodeId) return;
     if (!mountedRef.current) {
       mountedRef.current = true;
-      if (!p.selectedNodeId) return;
     }
-    const target = p.selectedNodeId ?? activeNodeId;
-    const el = listRef.current?.querySelector<HTMLLIElement>(`[data-node="${target}"]`);
+    const el = listRef.current?.querySelector<HTMLLIElement>(`[data-node="${p.selectedNodeId}"]`);
     el?.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
-  }, [activeNodeId, p.collapsed, p.selectedNodeId]);
+  }, [p.collapsed, p.mobileOpen, p.selectedNodeId]);
 
   return (
     <aside className={`left-panel ${p.collapsed ? "rail" : "expanded"} ${p.mobileOpen ? "mobile-open" : ""}`}>
@@ -105,7 +104,7 @@ export default function LeftTimeline(p: Props) {
               <div className="timeline-marker-layer">
                 {markers.map((marker) => {
                   const selected = p.selectedNodeId === marker.id;
-                  const current = marker.id === activeNodeId;
+                  const current = marker.id === currentNodeId;
                   return (
                     <button
                       key={marker.id}
@@ -127,7 +126,7 @@ export default function LeftTimeline(p: Props) {
               {nodes.map((node) => {
                 const marker = markers.find((item) => item.id === node.id)!;
                 const selected = p.selectedNodeId === node.id;
-                const current = node.id === activeNodeId;
+                const current = node.id === currentNodeId;
                 return (
                   <li
                     key={node.id}

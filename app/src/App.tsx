@@ -18,6 +18,9 @@ import { startAmbient, stopAmbient } from "./audio/ambient";
 import { SEG_PRIMARY_LINE } from "./map/cruise";
 import { getRightPanelPresentation } from "./layout/rightPanelPresentation";
 
+const CAMERA_MOTION_MS = 1400;
+const TOUR_CAMERA_MOTION_MS = 1500;
+
 function unionBounds(lineIds: string[], margin = 0.4): [number, number, number, number] {
   let w = 180;
   let s = 90;
@@ -181,7 +184,7 @@ export default function App() {
       const e2 = Math.max(...pts.map((q) => q[0])) + 0.5;
       const s = Math.min(...pts.map((q) => q[1])) - 0.5;
       const n2 = Math.max(...pts.map((q) => q[1])) + 0.5;
-      fly({ bounds: [w, s, e2, n2], duration: 2200 });
+      fly({ bounds: [w, s, e2, n2], duration: CAMERA_MOTION_MS });
     },
     [fly]
   );
@@ -189,7 +192,7 @@ export default function App() {
   const flyToStory = useCallback(
     (story: StoryPoint) => {
       const [lon, lat] = story.location;
-      fly({ bounds: [lon - 0.3, lat - 0.3, lon + 0.3, lat + 0.3], duration: 1800, zoom: 9 });
+      fly({ bounds: [lon - 0.3, lat - 0.3, lon + 0.3, lat + 0.3], duration: TOUR_CAMERA_MOTION_MS, zoom: 9 });
     },
     [fly]
   );
@@ -213,7 +216,7 @@ export default function App() {
     setCruising(false);
     setPlaying(false);
     setTerrain3d(false);
-    fly({ bounds: ROUTE_BOUNDS, zoom: 6.4, duration: 2200 });
+    fly({ bounds: ROUTE_BOUNDS, zoom: 6.4, duration: CAMERA_MOTION_MS });
   }, [fly]);
 
   const toggleCruise = useCallback(() => {
@@ -274,7 +277,7 @@ export default function App() {
         activeSegRef.current = seg;
         if (!cruiseRef.current) {
           const primary = SEG_PRIMARY_LINE[seg];
-          fly({ bounds: lineBounds(primary), duration: 2400 });
+          fly({ bounds: lineBounds(primary), duration: CAMERA_MOTION_MS });
         }
       }
       if (next >= 1) {
@@ -298,10 +301,10 @@ export default function App() {
       setSelectedNodeId(stop.nodeIds[0] ?? null);
       setBottomExpanded(false);
       if (stop.kind === "intro" || stop.kind === "final") {
-        fly({ bounds: ROUTE_BOUNDS, duration: 2600, zoom: 6.4 });
+        fly({ bounds: ROUTE_BOUNDS, duration: TOUR_CAMERA_MOTION_MS, zoom: 6.4 });
       } else {
         const lineIds = stop.nodeIds.flatMap((nid) => nodes.find((x) => x.id === nid)!.segmentIds);
-        fly({ bounds: unionBounds(lineIds), duration: 2600 });
+        fly({ bounds: unionBounds(lineIds), duration: TOUR_CAMERA_MOTION_MS });
       }
     },
     [fly]
@@ -322,7 +325,7 @@ export default function App() {
         setShowEpilogue(false);
         setRightView(null);
         setRevealT(1);
-        fly({ bounds: ROUTE_BOUNDS, duration: 2000 });
+        fly({ bounds: ROUTE_BOUNDS, duration: CAMERA_MOTION_MS });
       } else {
         setRightView({ type: "sources" });
       }
@@ -691,7 +694,7 @@ export default function App() {
           onEpilogue={setShowEpilogue}
           showStories={mapLayers.stories}
           onStories={(value) => setMapLayers((current) => ({ ...current, stories: value }))}
-          onResetView={() => fly({ bounds: ROUTE_BOUNDS, duration: 2200 })}
+          onResetView={() => fly({ bounds: ROUTE_BOUNDS, duration: CAMERA_MOTION_MS })}
         />
       )}
 
