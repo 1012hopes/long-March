@@ -44,7 +44,8 @@ test("App separates timelineT from revealT and keeps explore mode pinned to reve
 
   assert.match(appText, /const \[timelineT, setTimelineT\]/);
   assert.match(appText, /const \[revealT, setRevealT\]/);
-  assert.match(appText, /mode === "explore"[\s\S]{0,180}setRevealT\(1\)/);
+  assert.match(appText, /resolveRevealFromHash\(initialHash\)/);
+  assert.match(appText, /params\.mode === "explore" \? 1 : timelineFromHash/);
   assert.match(appText, /setTimelineT\(next\)/);
   assert.match(appText, /setRevealT\(next\)/);
 });
@@ -54,4 +55,24 @@ test("early node selection updates timelineT directly instead of clamping to lat
 
   assert.match(appText, /setTimelineT\(NODE_FRACTIONS\[id\]\)/);
   assert.ok(!appText.includes("Math.max(t, NODE_FRACTIONS[id])"));
+});
+
+test("tour mode locks the bottom scrubber instead of desynchronizing the timeline", async () => {
+  const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+  const bottomText = await readFile(new URL("../src/components/BottomPanel.tsx", import.meta.url), "utf8");
+
+  assert.match(appText, /if \(mode === "tour"\) return;/);
+  assert.match(appText, /<BottomPanel[\s\S]{0,120}scrubbingLocked=\{mode === "tour"\}/);
+  assert.match(bottomText, /disabled=\{p\.scrubbingLocked\}/);
+  assert.match(bottomText, /scrubbingLocked/);
+});
+
+test("left rail renders a neutral track and current-time indicator instead of a completion fill", async () => {
+  const leftText = await readFile(new URL("../src/components/LeftTimeline.tsx", import.meta.url), "utf8");
+  const cssText = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
+
+  assert.ok(!leftText.includes("timeline-fill"));
+  assert.match(leftText, /timeline-current/);
+  assert.match(cssText, /timeline-current/);
+  assert.ok(!cssText.includes(".timeline-fill {"));
 });

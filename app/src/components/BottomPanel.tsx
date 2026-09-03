@@ -20,6 +20,7 @@ type ProfilesFile = { generated: string; profiles: Record<string, SegmentProfile
 const profiles = profilesData as ProfilesFile;
 
 type Props = {
+  scrubbingLocked: boolean;
   timelineT: number;
   selectedNodeId: string | null;
   expanded: boolean;
@@ -112,6 +113,7 @@ export default function BottomPanel(p: Props) {
               max={1}
               step={0.001}
               value={p.timelineT}
+              disabled={p.scrubbingLocked}
               onChange={(e) => p.onScrub(parseFloat(e.target.value))}
               aria-label="时间进度"
             />
@@ -126,6 +128,7 @@ export default function BottomPanel(p: Props) {
                     style={{ left: `${frac * 100}%` }}
                     title={`${n.shortTitle}（${n.displayDateLabel}）`}
                     aria-label={`时间轴跳到节点：${n.shortTitle}`}
+                    disabled={p.scrubbingLocked}
                     onClick={() => p.onScrub(frac)}
                   />
                 );

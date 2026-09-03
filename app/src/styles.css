@@ -327,10 +327,24 @@ body {
   background: var(--archive-line);
 }
 
-.timeline-fill {
-  width: 100%;
-  background: var(--route-red);
-  transition: height 0.3s linear;
+.timeline-track {
+  position: absolute;
+  inset: 0;
+  width: 2px;
+  background: var(--archive-line);
+}
+
+.timeline-current {
+  position: absolute;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--route-red);
+  background: var(--paper-light);
+  box-shadow: 0 0 0 3px rgba(166, 50, 43, 0.12);
+  transform: translate(-50%, -50%);
+  transition: top 0.3s linear;
 }
 
 .timeline-item {
@@ -360,11 +374,6 @@ body {
   flex: none;
   position: relative;
   z-index: 2;
-}
-
-li.reached .tl-dot {
-  border-color: var(--route-red);
-  background: var(--route-red-soft);
 }
 
 li.selected .tl-dot {
@@ -3140,6 +3149,11 @@ summary:focus-visible {
   pointer-events: auto;
 }
 
+.scrub-tick:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
 .scrub-tick::after {
   content: "";
   position: absolute;
@@ -3160,6 +3174,11 @@ summary:focus-visible {
 .scrub-tick.reached::after {
   background: var(--route-red);
   border-color: var(--route-red);
+}
+
+.time-scrubber:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 /* 旁白字幕（播放时） */

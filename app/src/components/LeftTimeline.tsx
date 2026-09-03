@@ -65,12 +65,12 @@ export default function LeftTimeline(p: Props) {
             </button>
           </div>
           <div className="timeline-rail" aria-hidden="true">
-            <div className="timeline-fill" style={{ height: `${p.timelineT * 100}%` }} />
+            <div className="timeline-track" />
+            <div className="timeline-current" style={{ top: `${p.timelineT * 100}%` }} />
           </div>
           <ol className="timeline-list" ref={listRef}>
             {nodes.map((n) => {
               const frac = NODE_FRACTIONS[n.id];
-              const reached = p.timelineT >= frac - 1e-6;
               const selected = p.selectedNodeId === n.id;
               const current = n.id === activeNodeId;
               return (
@@ -78,9 +78,7 @@ export default function LeftTimeline(p: Props) {
                   key={n.id}
                   data-node={n.id}
                   aria-current={current ? "step" : undefined}
-                  className={`${selected ? "selected" : ""} ${current ? "current" : ""} ${
-                    reached ? "reached" : ""
-                  }`.trim()}
+                  className={`${selected ? "selected" : ""} ${current ? "current" : ""}`.trim()}
                 >
                   <button className="timeline-item" onClick={() => p.onSelect(n.id)}>
                     <span className="tl-dot" aria-hidden="true" />

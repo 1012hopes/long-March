@@ -83,6 +83,12 @@ function serializeHash(params: HashParams): string {
   return parts.length ? `#${parts.join("&")}` : "";
 }
 
+function resolveRevealFromHash(params: HashParams): number {
+  if (typeof params.revealT === "number") return params.revealT;
+  if (typeof params.timelineT !== "number") return 1;
+  return params.mode === "explore" ? 1 : params.timelineT;
+}
+
 function nodeAtTimelineT(t: number): NodeUnit {
   let current = nodes[0];
   for (const node of nodes) {
@@ -97,7 +103,7 @@ export default function App() {
   const [mode, setMode] = useState<Mode>(initialHash.mode ?? "explore");
   const [tourIndex, setTourIndex] = useState(initialHash.tourIndex ?? 0);
   const [timelineT, setTimelineT] = useState(initialHash.timelineT ?? 1);
-  const [revealT, setRevealT] = useState(initialHash.revealT ?? 1);
+  const [revealT, setRevealT] = useState(resolveRevealFromHash(initialHash));
   const [playing, setPlaying] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(initialHash.nodeId ?? null);
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(initialHash.storyId ?? null);
@@ -433,13 +439,19 @@ export default function App() {
         setRightView(params.mode === "sources" ? { type: "sources" } : null);
       }
       if (params.mode) setMode(params.mode);
-      if (typeof params.timelineT === "number") setTimelineT(params.timelineT);
+      const timelineFromHash =
+        typeof params.timelineT === "number"
+          ? params.timelineT
+          : typeof params.revealT === "number"
+            ? params.revealT
+            : undefined;
+      if (typeof timelineFromHash === "number") setTimelineT(timelineFromHash);
       if (typeof params.revealT === "number") setRevealT(params.revealT);
+      else if (typeof timelineFromHash === "number") setRevealT(params.mode === "explore" ? 1 : timelineFromHash);
+      else if (params.mode === "explore") setRevealT(1);
       if (params.mode === "tour") {
         setTourIndex(params.tourIndex ?? 0);
         applyTourStop(params.tourIndex ?? 0);
-      } else if (params.mode === "explore" || !params.mode) {
-        setRevealT(1);
       }
     };
     window.addEventListener("hashchange", onHashChange);
@@ -479,11 +491,12 @@ export default function App() {
       : "";
 
   const onScrub = (t: number) => {
+    if (mode === "tour") return;
     const next = Math.max(0, Math.min(1, t));
     const nextNode = nodeAtTimelineT(next);
     setPlaying(false);
     setTimelineT(next);
-    if (mode === "explore") setRevealT(1);
+    setRevealT(1);
     if (selectedNodeRef.current !== nextNode.id || selectedStoryRef.current !== null || rightViewRef.current?.type !== "node") {
       setSelectedStoryId(null);
       setSelectedNodeId(nextNode.id);
@@ -613,6 +626,7 @@ export default function App() {
 
       {!focusMode && mode !== "sources" && (
         <BottomPanel
+          scrubbingLocked={mode === "tour"}
           timelineT={timelineT}
           selectedNodeId={selectedNodeId}
           expanded={bottomExpanded}
