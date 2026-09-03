@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import MapCanvas, { ROUTE_BOUNDS, lineBounds, type CameraReq } from "./map/MapCanvas";
 import TopBar, { type Mode } from "./components/TopBar";
+import NodeSceneCartouche from "./components/NodeSceneCartouche";
 import LeftTimeline from "./components/LeftTimeline";
 import RightPanel, { type RightView } from "./components/RightPanel";
 import BottomPanel from "./components/BottomPanel";
@@ -11,6 +12,7 @@ import LayerPanel, { type MapLayerVisibility } from "./components/LayerPanel";
 import MapTitleReveal from "./components/MapTitleReveal";
 import { TOUR_STOPS } from "./tour";
 import { nodes, type NodeUnit } from "./data/nodes";
+import { sceneForNode } from "./data/nodeScenes";
 import { stories, type StoryPoint } from "./data/stories";
 import { NODE_FRACTIONS, activeSegmentAt } from "./data/time";
 import { narrationFor } from "./data/narration";
@@ -180,6 +182,19 @@ export default function App() {
 
   const flyToNode = useCallback(
     (node: NodeUnit) => {
+      const scene = sceneForNode(node.id);
+      if (scene) {
+        const isNarrow = window.innerWidth < 900;
+        fly({
+          bounds: scene.focusBounds,
+          duration: CAMERA_MOTION_MS,
+          padding: isNarrow
+            ? { top: 84, right: 24, bottom: 160, left: 24 }
+            : { top: 90, right: 108, bottom: 48, left: 34 },
+        });
+        return;
+      }
+
       const pts: Array<[number, number]> = [node.anchor, ...node.secondary.map((s) => [s.lon, s.lat] as [number, number])];
       const w = Math.min(...pts.map((q) => q[0])) - 0.5;
       const e2 = Math.max(...pts.map((q) => q[0])) + 0.5;
@@ -502,6 +517,8 @@ export default function App() {
 
   const selectedStory = selectedStoryId ? stories.find((item) => item.id === selectedStoryId) : null;
   const selectedNode = selectedNodeId ? nodes.find((item) => item.id === selectedNodeId) : null;
+  const selectedNodeScene = selectedNodeId ? sceneForNode(selectedNodeId) : null;
+  const activeNodeScene = effectiveRightView?.type === "node" ? selectedNodeScene : null;
   const revealTitle = selectedStory?.title ?? selectedNode?.title ?? null;
   const revealMeta = selectedStory
     ? selectedStory.dateLabel + " / " + selectedStory.place
@@ -542,6 +559,7 @@ export default function App() {
         progress={revealT}
         selectedNodeId={selectedNodeId}
         selectedStoryId={selectedStoryId}
+        nodeScene={activeNodeScene}
         layers={mapLayers}
         terrain3d={terrain3d}
         showEpilogue={showEpilogue}
@@ -554,6 +572,10 @@ export default function App() {
         cruise={cruising}
         onTerrainError={() => setTerrainOffline(true)}
       />
+
+      {activeNodeScene && selectedNode && !focusMode && (
+        <NodeSceneCartouche node={selectedNode} scene={activeNodeScene} />
+      )}
 
       {revealTitle && (
         <MapTitleReveal

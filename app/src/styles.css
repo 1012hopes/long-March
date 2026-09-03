@@ -79,6 +79,140 @@ body {
   outline: none;
 }
 
+.node-scene-cartouche {
+  position: absolute;
+  top: 88px;
+  left: 18px;
+  z-index: 26;
+  width: min(320px, calc(100vw - 36px));
+  padding: 12px 14px 13px;
+  color: var(--ink);
+  background: linear-gradient(180deg, rgba(252, 250, 245, 0.95), rgba(242, 238, 228, 0.9));
+  border: 1px solid rgba(120, 111, 96, 0.34);
+  border-left: 4px solid var(--route-red);
+  border-radius: 7px;
+  box-shadow: 0 12px 28px rgba(28, 29, 27, 0.14);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+
+.node-scene-cartouche-kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+  font: 700 10px/1.4 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.node-scene-cartouche-index {
+  color: var(--route-red);
+}
+
+.node-scene-cartouche-precision {
+  color: var(--ink-soft);
+}
+
+.node-scene-cartouche h2 {
+  font-family: var(--serif);
+  font-size: 24px;
+  line-height: 1.18;
+  letter-spacing: 0.04em;
+}
+
+.node-scene-cartouche-date {
+  margin-top: 5px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.node-scene-cartouche-cue {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px dashed rgba(120, 111, 96, 0.42);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.map-scene-annotation {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 180px;
+  opacity: 0;
+  transform: translate3d(0, 6px, 0);
+  transition:
+    opacity var(--motion-card-ms) ease,
+    transform var(--motion-card-ms) ease;
+  pointer-events: none;
+}
+
+.map-scene-annotation.visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.map-scene-annotation-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  color: var(--paper-light);
+  background: var(--route-red);
+  border: 1px solid rgba(252, 250, 245, 0.88);
+  border-radius: 999px;
+  box-shadow: 0 4px 10px rgba(28, 29, 27, 0.16);
+  font: 700 11px/1 var(--sans);
+}
+
+.map-scene-annotation-label {
+  display: inline-block;
+  padding: 4px 8px 4px 9px;
+  color: #2b2e2a;
+  background: rgba(252, 250, 245, 0.94);
+  border: 1px solid rgba(120, 111, 96, 0.34);
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(28, 29, 27, 0.1);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.map-scene-annotation.approximate .map-scene-annotation-badge,
+.map-scene-annotation.approximate .map-scene-annotation-label {
+  border-style: dashed;
+}
+
+.map-scene-annotation.approximate .map-scene-annotation-label {
+  color: #4b4f49;
+}
+
+.map-scene-annotation.origin .map-scene-annotation-badge,
+.map-scene-annotation.destination .map-scene-annotation-badge,
+.map-scene-annotation.crossing .map-scene-annotation-badge,
+.map-scene-annotation.meeting .map-scene-annotation-badge {
+  background: var(--route-red);
+}
+
+.map-scene-annotation.direction .map-scene-annotation-badge {
+  background: var(--evidence-blue);
+}
+
+.map-scene-annotation.river .map-scene-annotation-badge {
+  background: var(--river);
+}
+
+.map-scene-annotation.mountain .map-scene-annotation-badge {
+  background: var(--terrain);
+}
+
 /* ---------- 顶栏 ---------- */
 .topbar {
   position: absolute;
@@ -1897,6 +2031,27 @@ li.current .tl-title {
 }
 
 @media (max-width: 900px) {
+  .node-scene-cartouche {
+    top: 76px;
+    left: 10px;
+    width: min(300px, calc(100vw - 20px));
+    padding: 10px 11px 12px;
+  }
+
+  .node-scene-cartouche h2 {
+    font-size: 20px;
+  }
+
+  .map-scene-annotation {
+    max-width: 128px;
+  }
+
+  .map-scene-annotation-label {
+    max-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .layer-panel {
     top: 148px;
     left: 10px;
@@ -1930,6 +2085,10 @@ li.current .tl-title {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .map-scene-annotation {
+    transition: none;
+  }
+
   .story-marker.selected::before {
     animation: none;
     opacity: 0.55;
@@ -2205,6 +2364,10 @@ summary:focus-visible {
   .app.learning-focus > .map-title-reveal {
     display: none;
   }
+}
+
+.app.learning-focus .node-scene-cartouche {
+  left: 24px;
 }
 
 .node-card,
@@ -3821,6 +3984,7 @@ summary:focus-visible {
   .right-panel {
     width: calc(100vw - 20px);
     max-width: calc(100vw - 20px);
+    overflow-x: hidden;
   }
 
   .right-panel-node .node-card,

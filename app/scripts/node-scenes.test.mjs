@@ -5,6 +5,15 @@ import { nodeScenes, sceneForNode } from "../src/data/nodeScenes.ts";
 import { nodes } from "../src/data/nodes.ts";
 import { sources, segments } from "../src/data/sources.ts";
 import { stories } from "../src/data/stories.ts";
+import {
+  SCENE_ANNOTATION_LAYER_ID,
+  SCENE_ANNOTATION_SOURCE_ID,
+  SCENE_BADGE_LAYER_ID,
+  annotationPresentation,
+  applyNodeScene,
+  clearNodeScene,
+  routeSceneRole,
+} from "../src/map/nodeScenePresentation.ts";
 
 const validKinds = new Set(["origin", "destination", "crossing", "meeting", "direction", "river", "mountain"]);
 const validTerrainModes = new Set(["plain", "river-valley", "mountain", "plateau"]);
@@ -44,6 +53,65 @@ function routeBounds() {
   }
 
   return [west, south, east, north];
+}
+
+function makeFakeMap() {
+  const layers = new Map();
+  const sources = new Map();
+
+  const addSeedLayer = (id, paint = {}) => {
+    layers.set(id, { id, paint: { ...paint } });
+  };
+
+  for (const line of routeGeometry) {
+    if (line.id.endsWith("a") || line.id.endsWith("b")) {
+      addSeedLayer(`${line.id}-cand`, {
+        "line-color": "#765B78",
+        "line-dasharray": [2, 2.2],
+        "line-opacity": 0.95,
+      });
+    } else {
+      addSeedLayer(`${line.id}-corridor`, {
+        "line-opacity": 0.2,
+        "line-width": 18,
+      });
+      addSeedLayer(`${line.id}-line`, {
+        "line-opacity": 1,
+        "line-width": 3.4,
+      });
+    }
+  }
+
+  return {
+    addLayer(layer) {
+      layers.set(layer.id, { ...layer, paint: { ...(layer.paint ?? {}) } });
+    },
+    addSource(id, source) {
+      sources.set(id, {
+        ...source,
+        setData(data) {
+          this.data = data;
+        },
+      });
+    },
+    getLayer(id) {
+      return layers.get(id);
+    },
+    getSource(id) {
+      return sources.get(id);
+    },
+    removeLayer(id) {
+      layers.delete(id);
+    },
+    removeSource(id) {
+      sources.delete(id);
+    },
+    setPaintProperty(id, name, value) {
+      const layer = layers.get(id);
+      if (!layer) return;
+      layer.paint[name] = value;
+    },
+  };
 }
 
 test("node scene registry covers all nine teaching nodes and lookup stays exact", () => {
@@ -123,4 +191,59 @@ test("node scenes use valid bounds, references, and traceable annotations", () =
       }
     }
   }
+});
+
+test("route scene role isolates highlight, context, and dim states by segment", () => {
+  const scene = sceneForNode("node-05");
+  assert.ok(scene);
+
+  assert.equal(routeSceneRole("seg-04", scene), "highlight");
+  assert.equal(routeSceneRole("seg-05", scene), "context");
+  assert.equal(routeSceneRole("seg-02", scene), "dim");
+});
+
+test("annotation presentation exposes kind styling and approximate accessible wording", () => {
+  const approx = annotationPresentation(sceneForNode("node-07").annotations[1]);
+  const confirmed = annotationPresentation(sceneForNode("node-06").annotations[1]);
+
+  assert.equal(approx.glyph, "川");
+  assert.match(approx.className, /approximate/);
+  assert.match(approx.ariaLabel, /约略位置/);
+
+  assert.equal(confirmed.glyph, "渡");
+  assert.doesNotMatch(confirmed.className, /approximate/);
+  assert.doesNotMatch(confirmed.ariaLabel, /约略位置/);
+});
+
+test("applying and clearing a node scene manages annotation layers and preserves disputed candidate styling", () => {
+  const scene = sceneForNode("node-05");
+  assert.ok(scene);
+  const map = makeFakeMap();
+
+  applyNodeScene(map, scene);
+
+  assert.ok(map.getSource(SCENE_ANNOTATION_SOURCE_ID), "scene annotation source should be registered");
+  assert.ok(map.getLayer(SCENE_BADGE_LAYER_ID), "scene badge layer should be registered");
+  assert.ok(map.getLayer(SCENE_ANNOTATION_LAYER_ID), "scene label layer should be registered");
+
+  const source = map.getSource(SCENE_ANNOTATION_SOURCE_ID);
+  assert.equal(source.data.features.length, scene.annotations.length);
+  const approximateFeature = source.data.features.find((feature) => feature.properties.certainty === "approximate");
+  assert.ok(approximateFeature);
+  assert.match(approximateFeature.properties.ariaLabel, /约略位置/);
+
+  assert.equal(map.getLayer("seg-04a-cand").paint["line-color"], "#765B78");
+  assert.deepEqual(map.getLayer("seg-04a-cand").paint["line-dasharray"], [2, 2.2]);
+  assert.equal(map.getLayer("seg-04a-cand").paint["line-opacity"], 0.95);
+  assert.equal(map.getLayer("seg-05-line").paint["line-opacity"], 0.24);
+  assert.equal(map.getLayer("seg-02-line").paint["line-opacity"], 0.08);
+
+  clearNodeScene(map);
+
+  assert.equal(map.getSource(SCENE_ANNOTATION_SOURCE_ID), undefined);
+  assert.equal(map.getLayer(SCENE_BADGE_LAYER_ID), undefined);
+  assert.equal(map.getLayer(SCENE_ANNOTATION_LAYER_ID), undefined);
+  assert.equal(map.getLayer("seg-05-line").paint["line-opacity"], 1);
+  assert.equal(map.getLayer("seg-02-line").paint["line-opacity"], 1);
+  assert.equal(map.getLayer("seg-04a-cand").paint["line-opacity"], 0.95);
 });

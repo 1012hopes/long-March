@@ -122,3 +122,29 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 - `npm run test:stories`：PASS（8 个断言通过）。
 - `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-CU4BhB1s.js` gzip 393.56 kB）。
 - `git diff --check`：PASS（无空白错误；仅有 Git 的 LF→CRLF 提示）。
+
+## Task 5 结果（节点学习场景与展签）
+
+- 新增 `app/src/map/nodeScenePresentation.ts`，提供 `routeSceneRole()`、`annotationPresentation()`、`applyNodeScene()` 与 `clearNodeScene()`，并把节点学习态的路由强调、scene 标注源、以及恢复逻辑集中到单一可测试模块。
+- `App` 现在按 `sceneForNode(selectedNodeId)` 取出场景，并把该场景传给 `MapCanvas` 与新的 `NodeSceneCartouche`；节点相机改为优先使用 `scene.focusBounds`，让学习态镜头落在主线的视觉三分区域。
+- `MapCanvas` 在学习焦点中创建/清理 scene 标注 marker，用户手势会立即停止自动动效；离开学习焦点时会清除 scene 源与图层，并恢复普通路线强调。
+- `styles.css` 增加了地图侧 cartouche、scene exhibit label、以及移动端约束，避免学习态面板与标签造成横向溢出。
+- `app/scripts/node-scenes.test.mjs` 与 `app/scripts/learning-focus.test.mjs` 现在覆盖 scene 角色、标注可访问命名、scene 进出时的图层/源生命周期，以及 cartouche 绑定契约。
+
+## Task 5 验证证据
+
+- `npm run test:scenes`：PASS（5 个断言通过）。
+- `npm run test:learning`：PASS（5 个断言通过）。
+- `npm run test:map`：PASS（2 个断言通过）。
+- `npm run test:loading`：PASS（11 个断言通过）。
+- `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-Dx_xTc7i.js` gzip 397.52 kB）。
+- `git diff --check`：PASS（无空白错误；仅有 Git 的 LF→CRLF 提示）。
+
+## Task 5 视觉证据
+
+- 截图：`E:\数媒\长征一条路的来处\.omx\screenshots\node-map-terrain\node-01-1440x900.png`
+- 截图：`E:\数媒\长征一条路的来处\.omx\screenshots\node-map-terrain\node-05-1440x900.png`
+- 截图：`E:\数媒\长征一条路的来处\.omx\screenshots\node-map-terrain\node-08-1440x900.png`
+- 截图：`E:\数媒\长征一条路的来处\.omx\screenshots\node-map-terrain\node-05-390x844.png`
+- 视觉评分：91/100
+- 主要保留项：少数节点上 scene cartouche 与地图标签仍略密，`node-08` 这类场景在小屏下仍需留意标注重叠。

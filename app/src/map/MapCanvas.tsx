@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import maplibregl, { type Map as MlMap, type LngLatBoundsLike } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { buildStyle, MAP_LAYER_IDS, probeHillshade } from "./style";
+import type { NodeMapScene } from "../data/nodeScenes";
 import {
   cancelOnlineTerrain,
   ensureDetailContours,
@@ -9,6 +10,14 @@ import {
   ensureOnlineTerrain,
   loadContourLabels,
 } from "./terrainRuntime";
+import {
+  SCENE_ANNOTATION_LAYER_ID,
+  SCENE_BADGE_LAYER_ID,
+  type SceneMapLike,
+  annotationPresentation,
+  applyNodeScene,
+  clearNodeScene,
+} from "./nodeScenePresentation";
 import routeGeometry from "../data/route-geometry.json";
 import { nodes, epilogue } from "../data/nodes";
 import { stories } from "../data/stories";
@@ -21,6 +30,13 @@ import { activeSegmentAt } from "../data/time";
 import { getMarkerZoomState, getStoryMarkerPresentation } from "./markerPresentation";
 import { shouldHideMarkerForLearning } from "../layout/rightPanelPresentation";
 
+export type CameraPadding = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+};
+
 export type CameraReq = {
   seq: number;
   bounds?: [number, number, number, number]; // west, south, east, north
@@ -28,17 +44,19 @@ export type CameraReq = {
   zoom?: number;
   pitch?: number;
   duration?: number;
+  padding?: Partial<CameraPadding>;
 };
 
 type Props = {
   progress: number;
   selectedNodeId: string | null;
   selectedStoryId: string | null;
+  nodeScene: NodeMapScene | null;
   layers: MapLayerVisibility;
   terrain3d: boolean;
   showEpilogue: boolean;
   learningFocus: boolean;
-  padding: { top: number; right: number; bottom: number; left: number };
+  padding: CameraPadding;
   cameraReq: CameraReq | null;
   onSelectNode: (id: string) => void;
   onSelectStory: (id: string) => void;
@@ -105,6 +123,7 @@ export default function MapCanvas(props: Props) {
   const mapRef = useRef<MlMap | null>(null);
   const markerRefs = useRef<Map<string, { el: HTMLDivElement; mapMarker: maplibregl.Marker }>>(new Map());
   const storyRefs = useRef<Map<string, { el: HTMLDivElement; mapMarker: maplibregl.Marker }>>(new Map());
+  const sceneAnnotationRefs = useRef<maplibregl.Marker[]>([]);
   const secondaryRefs = useRef<HTMLDivElement[]>([]);
   const geoRefs = useRef<HTMLDivElement[]>([]);
   const contourLabelRefs = useRef<HTMLDivElement[]>([]);
@@ -116,6 +135,38 @@ export default function MapCanvas(props: Props) {
   const contourRuntimeStartedRef = useRef(false);
   const terrainErrorReportedRef = useRef(false);
   propsRef.current = props;
+
+  const clearSceneAnnotations = () => {
+    for (const marker of sceneAnnotationRefs.current) marker.remove();
+    sceneAnnotationRefs.current = [];
+  };
+
+  const setSceneTransitions = (map: MlMap, duration: number) => {
+    for (const line of routeGeometry) {
+      const isCandidate = line.id.endsWith("a") || line.id.endsWith("b");
+      if (isCandidate) {
+        if (map.getLayer(`${line.id}-cand`)) {
+          map.setPaintProperty(`${line.id}-cand`, "line-opacity-transition", { duration, delay: 0 });
+        }
+        continue;
+      }
+      if (map.getLayer(`${line.id}-corridor`)) {
+        map.setPaintProperty(`${line.id}-corridor`, "line-opacity-transition", { duration, delay: 0 });
+        map.setPaintProperty(`${line.id}-corridor`, "line-width-transition", { duration, delay: 0 });
+      }
+      if (map.getLayer(`${line.id}-line`)) {
+        map.setPaintProperty(`${line.id}-line`, "line-opacity-transition", { duration, delay: 0 });
+        map.setPaintProperty(`${line.id}-line`, "line-width-transition", { duration, delay: 0 });
+      }
+    }
+
+    if (map.getLayer(SCENE_BADGE_LAYER_ID)) {
+      map.setPaintProperty(SCENE_BADGE_LAYER_ID, "circle-opacity-transition", { duration, delay: 0 });
+    }
+    if (map.getLayer(SCENE_ANNOTATION_LAYER_ID)) {
+      map.setPaintProperty(SCENE_ANNOTATION_LAYER_ID, "text-opacity-transition", { duration, delay: 0 });
+    }
+  };
 
   const reportTerrainOffline = () => {
     if (terrainErrorReportedRef.current) return;
@@ -180,6 +231,7 @@ export default function MapCanvas(props: Props) {
 
       const gesture = () => {
         gesturedRef.current = true;
+        map?.stop();
         propsRef.current.onUserGesture();
       };
       for (const ev of ["mousedown", "wheel", "touchstart", "dragstart"]) {
@@ -441,6 +493,7 @@ export default function MapCanvas(props: Props) {
       secondaryRefs.current = [];
       geoRefs.current = [];
       contourLabelRefs.current = [];
+      clearSceneAnnotations();
     };
   }, []);
 
@@ -524,6 +577,66 @@ export default function MapCanvas(props: Props) {
       shouldHideMarkerForLearning(props.learningFocus, "epilogue", false)
     );
   }, [props.learningFocus, props.selectedNodeId, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const scene = props.learningFocus ? props.nodeScene : null;
+    const sceneMap = map as unknown as SceneMapLike;
+
+    if (!scene) {
+      setSceneTransitions(map, prefersReducedMotion() ? 0 : 420);
+      clearSceneAnnotations();
+      clearNodeScene(sceneMap);
+      return;
+    }
+
+    const transitionMs = prefersReducedMotion() ? 0 : 420;
+    setSceneTransitions(map, transitionMs);
+    applyNodeScene(sceneMap, scene);
+    setSceneTransitions(map, transitionMs);
+    clearSceneAnnotations();
+
+    const annotationEls: HTMLDivElement[] = [];
+    for (const annotation of scene.annotations) {
+      const presentation = annotationPresentation(annotation);
+      const el = makeMarker(
+        presentation.className,
+        `<span class="map-scene-annotation-badge" aria-hidden="true">${presentation.glyph}</span><span class="map-scene-annotation-label">${annotation.label}</span>`
+      );
+      el.setAttribute("role", "img");
+      el.setAttribute("aria-label", presentation.ariaLabel);
+      el.style.pointerEvents = "none";
+      el.style.transitionDuration = `${transitionMs}ms`;
+      const marker = new maplibregl.Marker({
+        element: el,
+        anchor: "left",
+        offset: [16, 0],
+      })
+        .setLngLat(annotation.location)
+        .addTo(map);
+      sceneAnnotationRefs.current.push(marker);
+      annotationEls.push(el);
+    }
+
+    if (transitionMs === 0) {
+      for (const el of annotationEls) el.classList.add("visible");
+    } else {
+      const raf = requestAnimationFrame(() => {
+        for (const el of annotationEls) el.classList.add("visible");
+      });
+      return () => {
+        cancelAnimationFrame(raf);
+        clearSceneAnnotations();
+        clearNodeScene(sceneMap);
+      };
+    }
+
+    return () => {
+      clearSceneAnnotations();
+      clearNodeScene(sceneMap);
+    };
+  }, [props.learningFocus, props.nodeScene, ready]);
 
   useEffect(() => {
     for (const [storyId, rec] of storyRefs.current) {
@@ -660,7 +773,7 @@ export default function MapCanvas(props: Props) {
     const req = props.cameraReq;
     if (!map || !ready || !req) return;
     const reduceMotion = prefersReducedMotion();
-    const opts = { padding: props.padding, essential: true };
+    const opts = { padding: req.padding ? { ...props.padding, ...req.padding } : props.padding, essential: true };
     let pitchTimer = 0;
     if (req.bounds) {
       const b: LngLatBoundsLike = [
