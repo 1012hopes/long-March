@@ -11,11 +11,11 @@
     "test:learning": "node --experimental-strip-types --test scripts/learning-focus.test.mjs",
     "test:timeline": "node --experimental-strip-types --test scripts/timeline-model.test.mjs",
     "test:scenes": "node --experimental-strip-types --test scripts/node-scenes.test.mjs",
-    "test:loading": "node --test scripts/map-loading.test.mjs",
+    "test:loading": "node --experimental-strip-types --test scripts/map-loading.test.mjs",
     "test:stories": "node --test scripts/story-data.test.mjs",
     "preview": "vite preview",
     "geo": "node scripts/fetch-geo.mjs",
-    "terrain": "node scripts/build-terrain.mjs"
+    "terrain": "node --experimental-strip-types scripts/build-terrain.mjs"
   },
   "dependencies": {
     "maplibre-gl": "^5.6.0",

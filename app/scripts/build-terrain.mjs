@@ -2,10 +2,11 @@
 // 1) 高程网格 -> 山体阴影晕染 PNG（纸面地形底图，地理配准）
 // 2) 各路线段海拔剖面 JSON（含来源、基准与采样记录）
 // 输出：public/terrain/hillshade.png 与 src/data/elevation-profiles.json
-import { writeFile, mkdir, readFile } from "node:fs/promises";
+import { writeFile, mkdir, readFile, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
+import { nodeScenes } from "../src/data/nodeScenes.ts";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
@@ -15,6 +16,13 @@ const Z = 8; // 约 0.4-0.6 km/px，对剖面与纸面晕渲足够
 const SAMPLES_PER_TILE = 96; // 每瓦片降采样格数
 const PROFILE_POINTS = 256; // 每段剖面采样点数（docs/07 预算 256-1024）
 const MULTI_AZIMUTHS = [315, 45, 225, 135];
+const NODE_SAMPLE_Z = 10;
+const NODE_TARGET_LONG_EDGE = 960;
+const NODE_MIN_LONG_EDGE = 480;
+const NODE_BUDGET_BYTES = 1_500_000;
+const NODE_SAFE_MARGIN_RATIO = 0.12;
+const NODE_SAFE_MARGIN_MIN = { lon: 0.06, lat: 0.05 };
+const NODE_DEM_SOURCE = "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)";
 const ELEVATION_COLORS = [
   [-300, [205, 219, 194]],
   [200, [218, 226, 194]],
@@ -28,6 +36,7 @@ const ELEVATION_COLORS = [
 
 const TILE_URL = (x, y, z) => `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
 const CACHE_DIR = join(root, ".terrain-cache");
+const TILE_MEMORY_CACHE = new Map();
 
 const lonToX = (lon, z) => Math.floor(((lon + 180) / 360) * 2 ** z);
 const latToY = (lat, z) => {
@@ -42,8 +51,12 @@ const yToLat = (y, z) => {
 
 async function fetchTile(x, y, z, retry = 2) {
   const cachePath = join(CACHE_DIR, `${z}_${x}_${y}.png`);
+  const cacheKey = `${z}/${x}/${y}`;
+  if (TILE_MEMORY_CACHE.has(cacheKey)) return TILE_MEMORY_CACHE.get(cacheKey);
   try {
-    return PNG.sync.read(await readFile(cachePath));
+    const tile = PNG.sync.read(await readFile(cachePath));
+    TILE_MEMORY_CACHE.set(cacheKey, tile);
+    return tile;
   } catch {
     /* 未命中缓存继续下载 */
   }
@@ -54,7 +67,9 @@ async function fetchTile(x, y, z, retry = 2) {
       const buf = Buffer.from(await res.arrayBuffer());
       await mkdir(CACHE_DIR, { recursive: true });
       await writeFile(cachePath, buf);
-      return PNG.sync.read(buf);
+      const tile = PNG.sync.read(buf);
+      TILE_MEMORY_CACHE.set(cacheKey, tile);
+      return tile;
     } catch (e) {
       if (i === retry) throw new Error(`tile ${z}/${x}/${y}: ${e.message}`);
       await new Promise((r) => setTimeout(r, 800 * (i + 1)));
@@ -82,6 +97,252 @@ function elevationColor(elevation) {
     }
   }
   return ELEVATION_COLORS[ELEVATION_COLORS.length - 1][1];
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function nodeCropBbox(scene) {
+  const [west, south, east, north] = scene.focusBounds;
+  const lonMargin = Math.max(NODE_SAFE_MARGIN_MIN.lon, (east - west) * NODE_SAFE_MARGIN_RATIO);
+  const latMargin = Math.max(NODE_SAFE_MARGIN_MIN.lat, (north - south) * NODE_SAFE_MARGIN_RATIO);
+  return {
+    west: clamp(west - lonMargin, BBOX.west, BBOX.east),
+    east: clamp(east + lonMargin, BBOX.west, BBOX.east),
+    south: clamp(south - latMargin, BBOX.south, BBOX.north),
+    north: clamp(north + latMargin, BBOX.south, BBOX.north),
+  };
+}
+
+function tileKey(z, x, y) {
+  return `${z}/${x}/${y}`;
+}
+
+async function loadTileWindow(bounds, z) {
+  const x0 = clamp(lonToX(bounds.west, z) - 1, 0, 2 ** z - 1);
+  const x1 = clamp(lonToX(bounds.east, z) + 1, 0, 2 ** z - 1);
+  const y0 = clamp(latToY(bounds.north, z) - 1, 0, 2 ** z - 1);
+  const y1 = clamp(latToY(bounds.south, z) + 1, 0, 2 ** z - 1);
+  const tiles = new Map();
+  const jobs = [];
+  for (let ty = y0; ty <= y1; ty++) {
+    for (let tx = x0; tx <= x1; tx++) {
+      jobs.push(
+        fetchTile(tx, ty, z).then((tile) => {
+          tiles.set(tileKey(z, tx, ty), tile);
+        })
+      );
+    }
+  }
+  await Promise.all(jobs);
+  return { tiles, x0, x1, y0, y1 };
+}
+
+function elevationAtWorldPixel(tiles, z, worldX, worldY) {
+  const tileX = clamp(Math.floor(worldX / 256), 0, 2 ** z - 1);
+  const tileY = clamp(Math.floor(worldY / 256), 0, 2 ** z - 1);
+  const tile = tiles.get(tileKey(z, tileX, tileY));
+  if (!tile) throw new Error(`missing tile ${z}/${tileX}/${tileY}`);
+  const px = clamp(Math.floor(worldX - tileX * 256), 0, tile.width - 1);
+  const py = clamp(Math.floor(worldY - tileY * 256), 0, tile.height - 1);
+  return readElevation(tile, px, py);
+}
+
+function sampleElevation(tiles, z, lon, lat) {
+  const worldSize = 256 * 2 ** z;
+  const worldX = clamp(((lon + 180) / 360) * worldSize, 0, worldSize - 1);
+  const worldY = clamp(((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * worldSize, 0, worldSize - 1);
+  return elevationAtWorldPixel(tiles, z, worldX, worldY);
+}
+
+async function buildElevationGrid(bounds, width, height, z) {
+  const { tiles } = await loadTileWindow(bounds, z);
+  const grid = new Float32Array(width * height);
+  for (let gy = 0; gy < height; gy++) {
+    const lat = bounds.north - ((gy + 0.5) / height) * (bounds.north - bounds.south);
+    for (let gx = 0; gx < width; gx++) {
+      const lon = bounds.west + ((gx + 0.5) / width) * (bounds.east - bounds.west);
+      grid[gy * width + gx] = sampleElevation(tiles, z, lon, lat);
+    }
+  }
+  return grid;
+}
+
+function resizePng(source, width, height) {
+  if (source.width === width && source.height === height) return source;
+  const resized = new PNG({ width, height });
+  const xScale = source.width / width;
+  const yScale = source.height / height;
+  for (let y = 0; y < height; y++) {
+    const sy = (y + 0.5) * yScale - 0.5;
+    const y0 = clamp(Math.floor(sy), 0, source.height - 1);
+    const y1 = clamp(y0 + 1, 0, source.height - 1);
+    const ty = sy - y0;
+    for (let x = 0; x < width; x++) {
+      const sx = (x + 0.5) * xScale - 0.5;
+      const x0 = clamp(Math.floor(sx), 0, source.width - 1);
+      const x1 = clamp(x0 + 1, 0, source.width - 1);
+      const tx = sx - x0;
+      const idx = (y * width + x) * 4;
+      const idx00 = (y0 * source.width + x0) * 4;
+      const idx10 = (y0 * source.width + x1) * 4;
+      const idx01 = (y1 * source.width + x0) * 4;
+      const idx11 = (y1 * source.width + x1) * 4;
+      for (let channel = 0; channel < 4; channel++) {
+        const c00 = source.data[idx00 + channel];
+        const c10 = source.data[idx10 + channel];
+        const c01 = source.data[idx01 + channel];
+        const c11 = source.data[idx11 + channel];
+        const c0 = c00 + (c10 - c00) * tx;
+        const c1 = c01 + (c11 - c01) * tx;
+        resized.data[idx + channel] = Math.round(c0 + (c1 - c0) * ty);
+      }
+    }
+  }
+  return resized;
+}
+
+function terrainPreset(mode) {
+  switch (mode) {
+    case "river-valley":
+      return { ambient: 0.68, shadow: 0.45, slope: 0.045, tintAlpha: 0.98, reliefAlpha: 1 };
+    case "mountain":
+      return { ambient: 0.74, shadow: 0.32, slope: 0.028, tintAlpha: 0.94, reliefAlpha: 0.88 };
+    case "plateau":
+      return { ambient: 0.71, shadow: 0.36, slope: 0.03, tintAlpha: 0.96, reliefAlpha: 0.9 };
+    default:
+      return { ambient: 0.76, shadow: 0.28, slope: 0.022, tintAlpha: 0.92, reliefAlpha: 0.8 };
+  }
+}
+
+function renderTerrainPair(grid, width, height, bounds, mode) {
+  const tintPng = new PNG({ width, height });
+  const reliefPng = new PNG({ width, height });
+  const preset = terrainPreset(mode);
+  const metersPerCellX = ((bounds.east - bounds.west) * 111320 * Math.cos(((bounds.north + bounds.south) / 2) * Math.PI / 180)) / width;
+  const metersPerCellY = ((bounds.north - bounds.south) * 110540) / height;
+  for (let gy = 0; gy < height; gy++) {
+    for (let gx = 0; gx < width; gx++) {
+      const xPrev = Math.max(0, gx - 1);
+      const xNext = Math.min(width - 1, gx + 1);
+      const yPrev = Math.max(0, gy - 1);
+      const yNext = Math.min(height - 1, gy + 1);
+      const dzdx =
+        (grid[gy * width + xNext] - grid[gy * width + xPrev]) /
+        (Math.max(1, xNext - xPrev) * Math.max(1, metersPerCellX));
+      const dzdy =
+        (grid[yNext * width + gx] - grid[yPrev * width + gx]) /
+        (Math.max(1, yNext - yPrev) * Math.max(1, metersPerCellY));
+      const slope = Math.atan(Math.sqrt(dzdx * dzdx + dzdy * dzdy));
+      const aspect = Math.atan2(dzdy, -dzdx);
+      let shade = 0;
+      MULTI_AZIMUTHS.forEach((degrees, index) => {
+        const azimuth = (degrees * Math.PI) / 180;
+        const light =
+          Math.sin((45 * Math.PI) / 180) * Math.cos(slope) +
+          Math.cos((45 * Math.PI) / 180) * Math.sin(slope) * Math.cos(azimuth - aspect);
+        shade += light * (index === 0 ? 0.55 : 0.15);
+      });
+      const elev = grid[gy * width + gx];
+      const idx = (gy * width + gx) * 4;
+      const edgeDistance = Math.min(gx, gy, width - 1 - gx, height - 1 - gy);
+      const feather = Math.max(0, Math.min(1, edgeDistance / Math.max(40, Math.round(Math.min(width, height) / 9))));
+      const color = elevationColor(elev);
+      tintPng.data[idx] = color[0];
+      tintPng.data[idx + 1] = color[1];
+      tintPng.data[idx + 2] = color[2];
+      tintPng.data[idx + 3] = Math.round(224 * preset.tintAlpha * feather);
+
+      const darkness = Math.max(0, Math.min(0.2, (preset.ambient - shade) * preset.shadow + slope * preset.slope));
+      reliefPng.data[idx] = 70;
+      reliefPng.data[idx + 1] = 74;
+      reliefPng.data[idx + 2] = 66;
+      reliefPng.data[idx + 3] = Math.round(darkness * 255 * preset.reliefAlpha * feather);
+    }
+  }
+  return { tintPng, reliefPng };
+}
+
+function nodeRenderSize(bounds) {
+  const aspect = (bounds.east - bounds.west) / (bounds.north - bounds.south);
+  const longEdge = NODE_TARGET_LONG_EDGE;
+  const width = aspect >= 1 ? longEdge : Math.max(320, Math.round(longEdge * aspect));
+  const height = aspect >= 1 ? Math.max(320, Math.round(longEdge / aspect)) : longEdge;
+  return { width, height };
+}
+
+async function renderNodeTerrain(scene) {
+  const bounds = nodeCropBbox(scene);
+  let { width, height } = nodeRenderSize(bounds);
+  let grid = await buildElevationGrid(bounds, width, height, NODE_SAMPLE_Z);
+  let { tintPng, reliefPng } = renderTerrainPair(grid, width, height, bounds, scene.terrainMode);
+
+  while (PNG.sync.write(tintPng).length + PNG.sync.write(reliefPng).length > NODE_BUDGET_BYTES && Math.max(width, height) > NODE_MIN_LONG_EDGE) {
+    const nextWidth = Math.max(2, Math.round(width * 0.85));
+    const nextHeight = Math.max(2, Math.round(height * 0.85));
+    width = nextWidth;
+    height = nextHeight;
+    tintPng = resizePng(tintPng, width, height);
+    reliefPng = resizePng(reliefPng, width, height);
+  }
+
+  return {
+    bounds,
+    width,
+    height,
+    tintBytes: PNG.sync.write(tintPng),
+    reliefBytes: PNG.sync.write(reliefPng),
+  };
+}
+
+async function writeNodeTerrainAssets() {
+  const outDir = join(root, "public", "terrain", "nodes");
+  await mkdir(outDir, { recursive: true });
+  const generated = new Date().toISOString().slice(0, 10);
+  const entries = [];
+
+  for (const scene of nodeScenes) {
+    const rendered = await renderNodeTerrain(scene);
+    const tintName = `${scene.nodeId}-tint.png`;
+    const hillshadeName = `${scene.nodeId}-hillshade.png`;
+    await writeFile(join(outDir, tintName), rendered.tintBytes);
+    await writeFile(join(outDir, hillshadeName), rendered.reliefBytes);
+    const [tintStat, hillshadeStat] = await Promise.all([
+      stat(join(outDir, tintName)),
+      stat(join(outDir, hillshadeName)),
+    ]);
+    entries.push({
+      nodeId: scene.nodeId,
+      terrainMode: scene.terrainMode,
+      source: NODE_DEM_SOURCE,
+      generated,
+      bbox: rendered.bounds,
+      sampleZoom: NODE_SAMPLE_Z,
+      resolution: { width: rendered.width, height: rendered.height },
+      filenames: { tint: tintName, hillshade: hillshadeName },
+      sizes: {
+        tint: tintStat.size,
+        hillshade: hillshadeStat.size,
+        pair: tintStat.size + hillshadeStat.size,
+      },
+    });
+  }
+
+  await writeFile(
+    join(outDir, "manifest.json"),
+    JSON.stringify(
+      {
+        generated,
+        source: NODE_DEM_SOURCE,
+        sampleZoom: NODE_SAMPLE_Z,
+        budgetBytes: NODE_BUDGET_BYTES,
+        nodes: entries,
+      },
+      null,
+      2
+    )
+  );
 }
 
 function contourSegments(grid, width, height, level, step) {
@@ -328,6 +589,7 @@ async function main() {
   );
   console.log("hillshade ->", join(outDir, "hillshade.png"), JSON.stringify(geoBbox));
   await writeContours({ grid, width: gw, height: gh, outDir, x0, y0, z: Z });
+  await writeNodeTerrainAssets();
 
   // 读取路线段几何，生成剖面
   let routeSegments = [];

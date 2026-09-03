@@ -1,0 +1,242 @@
+{
+  "generated": "2026-09-03",
+  "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
+  "sampleZoom": 10,
+  "budgetBytes": 1500000,
+  "nodes": [
+    {
+      "nodeId": "node-01",
+      "terrainMode": "river-valley",
+      "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
+      "generated": "2026-09-03",
+      "bbox": {
+        "west": 114.51836,
+        "east": 116.18864,
+        "south": 25.30976,
+        "north": 26.242240000000002
+      },
+      "sampleZoom": 10,
+      "resolution": {
+        "width": 960,
+        "height": 536
+      },
+      "filenames": {
+        "tint": "node-01-tint.png",
+        "hillshade": "node-01-hillshade.png"
+      },
+      "sizes": {
+        "tint": 361891,
+        "hillshade": 202290,
+        "pair": 564181
+      }
+    },
+    {
+      "nodeId": "node-02",
+      "terrainMode": "river-valley",
+      "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
+      "generated": "2026-09-03",
+      "bbox": {
+        "west": 110.37488,
+        "east": 111.36812,
+        "south": 25.34964,
+        "north": 26.19036
+      },
+      "sampleZoom": 10,
+      "resolution": {
+        "width": 960,
+        "height": 813
+      },
+      "filenames": {
+        "tint": "node-02-tint.png",
+        "hillshade": "node-02-hillshade.png"
+      },
+      "sizes": {
+        "tint": 393214,
+        "hillshade": 378764,
+        "pair": 771978
+      }
+    },
+    {
+      "nodeId": "node-03",
+      "terrainMode": "mountain",
+      "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
+      "generated": "2026-09-03",
+      "bbox": {
+        "west": 106.90459999999999,
+        "east": 110.3704,
+        "south": 25.8024,
+        "north": 27.4826
+      },
+      "sampleZoom": 10,
+      "resolution": {
+        "width": 960,
+        "height": 465
+      },
+      "filenames": {
+        "tint": "node-03-tint.png",
+        "hillshade": "node-03-hillshade.png"
+      },
+      "sizes": {
+        "tint": 498266,
+        "hillshade": 330733,
+        "pair": 828999
+      }
+    },
+    {
+      "nodeId": "node-04",
+      "terrainMode": "plain",
+      "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
+      "generated": "2026-09-03",
+      "bbox": {
+        "west": 106.1992,
+        "east": 107.5508,
+        "south": 27.2464,
+        "north": 28.2136
+      },
+      "sampleZoom": 10,
+      "resolution": {
+        "width": 960,
+        "height": 687
+      },
+      "filenames": {
+        "tint": "node-04-tint.png",
+        "hillshade": "node-04-hillshade.png"
+      },
+      "sizes": {
+        "tint": 402810,
+        "hillshade": 410760,
+        "pair": 813570
+      }
+    },
+    {
+      "nodeId": "node-05",
+      "terrainMode": "river-valley",
+      "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
+      "generated": "2026-09-03",
+      "bbox": {
+        "west": 105.59704,
+        "east": 107.24996,
+        "south": 26.8212,
+        "north": 28.668799999999997
+      },
+      "sampleZoom": 10,
+      "resolution": {
+        "width": 859,
+        "height": 960
+      },
+      "filenames": {
+        "tint": "node-05-tint.png",
+        "hillshade": "node-05-hillshade.png"
+      },
+      "sizes": {
+        "tint": 617174,
+        "hillshade": 499820,
+        "pair": 1116994
+      }
+    },
+    {
+      "nodeId": "node-06",
+      "terrainMode": "river-valley",
+      "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
+      "generated": "2026-09-03",
+      "bbox": {
+        "west": 101.95439999999999,
+        "east": 103.6656,
+        "south": 24.959600000000002,
+        "north": 29.5104
+      },
+      "sampleZoom": 10,
+      "resolution": {
+        "width": 361,
+        "height": 960
+      },
+      "filenames": {
+        "tint": "node-06-tint.png",
+        "hillshade": "node-06-hillshade.png"
+      },
+      "sizes": {
+        "tint": 415461,
+        "hillshade": 236818,
+        "pair": 652279
+      }
+    },
+    {
+      "nodeId": "node-07",
+      "terrainMode": "river-valley",
+      "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
+      "generated": "2026-09-03",
+      "bbox": {
+        "west": 102.03999999999999,
+        "east": 102.56,
+        "south": 28.92472,
+        "north": 30.21928
+      },
+      "sampleZoom": 10,
+      "resolution": {
+        "width": 386,
+        "height": 960
+      },
+      "filenames": {
+        "tint": "node-07-tint.png",
+        "hillshade": "node-07-hillshade.png"
+      },
+      "sizes": {
+        "tint": 316626,
+        "hillshade": 328676,
+        "pair": 645302
+      }
+    },
+    {
+      "nodeId": "node-08",
+      "terrainMode": "mountain",
+      "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
+      "generated": "2026-09-03",
+      "bbox": {
+        "west": 102.1028,
+        "east": 103.10719999999999,
+        "south": 30.3336,
+        "north": 31.8464
+      },
+      "sampleZoom": 10,
+      "resolution": {
+        "width": 637,
+        "height": 960
+      },
+      "filenames": {
+        "tint": "node-08-tint.png",
+        "hillshade": "node-08-hillshade.png"
+      },
+      "sizes": {
+        "tint": 654760,
+        "hillshade": 521646,
+        "pair": 1176406
+      }
+    },
+    {
+      "nodeId": "node-09",
+      "terrainMode": "plateau",
+      "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
+      "generated": "2026-09-03",
+      "bbox": {
+        "west": 103.62568,
+        "east": 108.94032,
+        "south": 33.42104,
+        "north": 37.30596
+      },
+      "sampleZoom": 10,
+      "resolution": {
+        "width": 960,
+        "height": 702
+      },
+      "filenames": {
+        "tint": "node-09-tint.png",
+        "hillshade": "node-09-hillshade.png"
+      },
+      "sizes": {
+        "tint": 711854,
+        "hillshade": 416014,
+        "pair": 1127868
+      }
+    }
+  ]
+}

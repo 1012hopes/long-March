@@ -5,11 +5,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import ts from "typescript";
+import { nodes } from "../src/data/nodes.ts";
+import { nodeScenes } from "../src/data/nodeScenes.ts";
 
 const stylePath = new URL("../src/map/style.ts", import.meta.url);
 const terrainRuntimePath = new URL("../src/map/terrainRuntime.ts", import.meta.url);
 const routeGeometryPath = new URL("../src/data/route-geometry.json", import.meta.url);
 const terrainDir = new URL("../public/terrain/", import.meta.url);
+const terrainNodeDir = new URL("../public/terrain/nodes/", import.meta.url);
+const today = "2026-09-03";
 
 async function importTranspiledModule(filename, sourceText) {
   const transpiled = ts.transpileModule(sourceText, {
@@ -53,6 +57,10 @@ async function terrainRasterSizes() {
       size: (await stat(new URL(file, terrainDir))).size,
     }))
   );
+}
+
+function withinBounds([lon, lat], [west, south, east, north]) {
+  return lon >= west && lon <= east && lat >= south && lat <= north;
 }
 
 class FakeMap {
@@ -277,6 +285,52 @@ test("probeHillshade fetches only bbox metadata before map construction", async 
   }
 
   assert.deepEqual(calls, ["terrain/hillshade-bbox.json"]);
+});
+
+test("node-local terrain crops cover all nine scenes and stay within the size budget", async () => {
+  const manifest = JSON.parse(await readFile(new URL("manifest.json", terrainNodeDir), "utf8"));
+  const nodeIds = nodes.map((node) => node.id).sort();
+  const manifestNodeIds = manifest.nodes.map((entry) => entry.nodeId).sort();
+
+  assert.equal(manifest.generated, today);
+  assert.equal(manifest.source, "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)");
+  assert.equal(manifest.sampleZoom, 10);
+  assert.equal(manifest.budgetBytes, 1500000);
+  assert.equal(manifest.nodes.length, nodes.length);
+  assert.deepEqual(manifestNodeIds, nodeIds);
+
+  for (const entry of manifest.nodes) {
+    const scene = nodeScenes.find((candidate) => candidate.nodeId === entry.nodeId);
+    const node = nodes.find((candidate) => candidate.id === entry.nodeId);
+    assert.ok(scene, "missing scene for " + entry.nodeId);
+    assert.ok(node, "missing node for " + entry.nodeId);
+
+    assert.ok(entry.filenames.tint.endsWith("-tint.png"), entry.nodeId + " tint filename should be canonical");
+    assert.ok(entry.filenames.hillshade.endsWith("-hillshade.png"), entry.nodeId + " hillshade filename should be canonical");
+    assert.ok(entry.sizes.tint > 0, entry.nodeId + " tint should be non-empty");
+    assert.ok(entry.sizes.hillshade > 0, entry.nodeId + " hillshade should be non-empty");
+    assert.ok(entry.sizes.pair <= 1_500_000, entry.nodeId + " crop pair must respect budget");
+    assert.ok(entry.resolution.width > 0 && entry.resolution.height > 0, entry.nodeId + " resolution must be positive");
+    assert.ok(
+      withinBounds(node.anchor, [entry.bbox.west, entry.bbox.south, entry.bbox.east, entry.bbox.north]),
+      entry.nodeId + " bbox must contain node anchor"
+    );
+    assert.ok(
+      withinBounds(scene.focusBounds.slice(0, 2), [entry.bbox.west, entry.bbox.south, entry.bbox.east, entry.bbox.north]),
+      entry.nodeId + " bbox should contain west/south scene extent"
+    );
+    assert.ok(
+      withinBounds(scene.focusBounds.slice(2, 4), [entry.bbox.west, entry.bbox.south, entry.bbox.east, entry.bbox.north]),
+      entry.nodeId + " bbox should contain east/north scene extent"
+    );
+  }
+
+  for (const nodeId of nodeIds) {
+    await Promise.all([
+      stat(new URL(`${nodeId}-tint.png`, terrainNodeDir)),
+      stat(new URL(`${nodeId}-hillshade.png`, terrainNodeDir)),
+    ]);
+  }
 });
 
 test("ensureMajorContours adds the 200m contour layer once and preserves requested visibility", async () => {
