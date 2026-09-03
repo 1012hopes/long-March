@@ -7,6 +7,11 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
 import { nodeScenes } from "../src/data/nodeScenes.ts";
+import {
+  NODE_TERRAIN_LONG_EDGE_CANDIDATES,
+  NODE_TERRAIN_PAIR_BUDGET_BYTES,
+  selectNodeTerrainVariant,
+} from "./node-terrain-sizing.mjs";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
@@ -17,9 +22,6 @@ const SAMPLES_PER_TILE = 96; // 每瓦片降采样格数
 const PROFILE_POINTS = 256; // 每段剖面采样点数（docs/07 预算 256-1024）
 const MULTI_AZIMUTHS = [315, 45, 225, 135];
 const NODE_SAMPLE_Z = 10;
-const NODE_TARGET_LONG_EDGE = 960;
-const NODE_MIN_LONG_EDGE = 480;
-const NODE_BUDGET_BYTES = 1_500_000;
 const NODE_SAFE_MARGIN_RATIO = 0.12;
 const NODE_SAFE_MARGIN_MIN = { lon: 0.06, lat: 0.05 };
 const NODE_DEM_SOURCE = "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)";
@@ -169,40 +171,6 @@ async function buildElevationGrid(bounds, width, height, z) {
   return grid;
 }
 
-function resizePng(source, width, height) {
-  if (source.width === width && source.height === height) return source;
-  const resized = new PNG({ width, height });
-  const xScale = source.width / width;
-  const yScale = source.height / height;
-  for (let y = 0; y < height; y++) {
-    const sy = (y + 0.5) * yScale - 0.5;
-    const y0 = clamp(Math.floor(sy), 0, source.height - 1);
-    const y1 = clamp(y0 + 1, 0, source.height - 1);
-    const ty = sy - y0;
-    for (let x = 0; x < width; x++) {
-      const sx = (x + 0.5) * xScale - 0.5;
-      const x0 = clamp(Math.floor(sx), 0, source.width - 1);
-      const x1 = clamp(x0 + 1, 0, source.width - 1);
-      const tx = sx - x0;
-      const idx = (y * width + x) * 4;
-      const idx00 = (y0 * source.width + x0) * 4;
-      const idx10 = (y0 * source.width + x1) * 4;
-      const idx01 = (y1 * source.width + x0) * 4;
-      const idx11 = (y1 * source.width + x1) * 4;
-      for (let channel = 0; channel < 4; channel++) {
-        const c00 = source.data[idx00 + channel];
-        const c10 = source.data[idx10 + channel];
-        const c01 = source.data[idx01 + channel];
-        const c11 = source.data[idx11 + channel];
-        const c0 = c00 + (c10 - c00) * tx;
-        const c1 = c01 + (c11 - c01) * tx;
-        resized.data[idx + channel] = Math.round(c0 + (c1 - c0) * ty);
-      }
-    }
-  }
-  return resized;
-}
-
 function terrainPreset(mode) {
   switch (mode) {
     case "river-valley":
@@ -264,35 +232,29 @@ function renderTerrainPair(grid, width, height, bounds, mode) {
   return { tintPng, reliefPng };
 }
 
-function nodeRenderSize(bounds) {
-  const aspect = (bounds.east - bounds.west) / (bounds.north - bounds.south);
-  const longEdge = NODE_TARGET_LONG_EDGE;
-  const width = aspect >= 1 ? longEdge : Math.max(320, Math.round(longEdge * aspect));
-  const height = aspect >= 1 ? Math.max(320, Math.round(longEdge / aspect)) : longEdge;
-  return { width, height };
-}
-
 async function renderNodeTerrain(scene) {
   const bounds = nodeCropBbox(scene);
-  let { width, height } = nodeRenderSize(bounds);
-  let grid = await buildElevationGrid(bounds, width, height, NODE_SAMPLE_Z);
-  let { tintPng, reliefPng } = renderTerrainPair(grid, width, height, bounds, scene.terrainMode);
-
-  while (PNG.sync.write(tintPng).length + PNG.sync.write(reliefPng).length > NODE_BUDGET_BYTES && Math.max(width, height) > NODE_MIN_LONG_EDGE) {
-    const nextWidth = Math.max(2, Math.round(width * 0.85));
-    const nextHeight = Math.max(2, Math.round(height * 0.85));
-    width = nextWidth;
-    height = nextHeight;
-    tintPng = resizePng(tintPng, width, height);
-    reliefPng = resizePng(reliefPng, width, height);
-  }
+  const aspect = (bounds.east - bounds.west) / (bounds.north - bounds.south);
+  const chosen = await selectNodeTerrainVariant({
+    aspect,
+    candidates: NODE_TERRAIN_LONG_EDGE_CANDIDATES,
+    budgetBytes: NODE_TERRAIN_PAIR_BUDGET_BYTES,
+    measure: async (width, height) => {
+      const grid = await buildElevationGrid(bounds, width, height, NODE_SAMPLE_Z);
+      const { tintPng, reliefPng } = renderTerrainPair(grid, width, height, bounds, scene.terrainMode);
+      return {
+        tint: PNG.sync.write(tintPng),
+        hillshade: PNG.sync.write(reliefPng),
+      };
+    },
+  });
 
   return {
     bounds,
-    width,
-    height,
-    tintBytes: PNG.sync.write(tintPng),
-    reliefBytes: PNG.sync.write(reliefPng),
+    width: chosen.width,
+    height: chosen.height,
+    tintBytes: chosen.tint,
+    reliefBytes: chosen.hillshade,
   };
 }
 
@@ -319,6 +281,7 @@ async function writeNodeTerrainAssets() {
       generated,
       bbox: rendered.bounds,
       sampleZoom: NODE_SAMPLE_Z,
+      chosenLongEdge: Math.max(rendered.width, rendered.height),
       resolution: { width: rendered.width, height: rendered.height },
       filenames: { tint: tintName, hillshade: hillshadeName },
       sizes: {
@@ -336,7 +299,8 @@ async function writeNodeTerrainAssets() {
         generated,
         source: NODE_DEM_SOURCE,
         sampleZoom: NODE_SAMPLE_Z,
-        budgetBytes: NODE_BUDGET_BYTES,
+        budgetBytes: NODE_TERRAIN_PAIR_BUDGET_BYTES,
+        candidateLongEdges: NODE_TERRAIN_LONG_EDGE_CANDIDATES,
         nodes: entries,
       },
       null,

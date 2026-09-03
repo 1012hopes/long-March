@@ -153,7 +153,8 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 ## Task 6 结果（九节点高分辨率地形裁切）
 
 - `app/scripts/build-terrain.mjs` 现在基于 `nodeScenes.focusBounds` 生成九份本地节点地形裁切，并使用 12% 安全边距、`z10` DEM 采样和共享 `.terrain-cache`。
-- `app/public/terrain/nodes/manifest.json` 记录了 `generated`、`source`、`bbox`、`sampleZoom`、最终 `resolution`、`filenames` 和 `sizes`。
+- `app/public/terrain/nodes/manifest.json` 记录了 `generated`、`source`、`bbox`、`sampleZoom`、`candidateLongEdges`、`chosenLongEdge`、最终 `resolution`、`filenames` 和 `sizes`。
+- 节点裁切采用固定候选长边 `960/840/720/600/480` 逐个编码，先找到的合格结果即写入 manifest；若全部超出 `1.5MB`，地形生成会直接失败。
 - 九个节点裁切总量：`7,697,577` bytes；单节点 pair 全部低于 `1.5MB`，最大为 `node-08` 的 `1,176,406` bytes。
 - 暖缓存再跑一遍 `npm run terrain` 的耗时：`8.33s`。
 - 运行时局部节点裁切尚未接入地图，保留全局地形回退，不影响 Task 7/8 的接线。
@@ -162,7 +163,7 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 ## Task 6 验证证据
 
 - `npm run terrain`：PASS（生成全局地形、九节点裁切与 manifest）。
-- `npm run test:loading`：PASS（12 个断言通过，含 manifest/文件/预算校验）。
+- `npm run test:loading`：PASS（13 个断言通过，含 manifest/文件/预算校验与候选选择失败路径）。
 - `npm run test:scenes`：PASS（6 个断言通过）。
 - `npm run test:stories`：PASS（8 个断言通过）。
 - `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-BP59p3ZA.js` gzip 397.68 kB）。

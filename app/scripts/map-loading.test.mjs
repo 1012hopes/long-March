@@ -10,6 +10,7 @@ import { nodeScenes } from "../src/data/nodeScenes.ts";
 
 const stylePath = new URL("../src/map/style.ts", import.meta.url);
 const terrainRuntimePath = new URL("../src/map/terrainRuntime.ts", import.meta.url);
+const nodeTerrainSizingPath = new URL("./node-terrain-sizing.mjs", import.meta.url);
 const routeGeometryPath = new URL("../src/data/route-geometry.json", import.meta.url);
 const terrainDir = new URL("../public/terrain/", import.meta.url);
 const terrainNodeDir = new URL("../public/terrain/nodes/", import.meta.url);
@@ -47,6 +48,11 @@ async function loadStyleModule() {
 async function loadTerrainRuntimeModule() {
   const runtimeText = await readFile(terrainRuntimePath, "utf8");
   return importTranspiledModule("terrainRuntime.mjs", runtimeText);
+}
+
+async function loadNodeTerrainSizingModule() {
+  const sourceText = await readFile(nodeTerrainSizingPath, "utf8");
+  return importTranspiledModule("nodeTerrainSizing.mjs", sourceText);
 }
 
 async function terrainRasterSizes() {
@@ -296,6 +302,7 @@ test("node-local terrain crops cover all nine scenes and stay within the size bu
   assert.equal(manifest.source, "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)");
   assert.equal(manifest.sampleZoom, 10);
   assert.equal(manifest.budgetBytes, 1500000);
+  assert.deepEqual(manifest.candidateLongEdges, [960, 840, 720, 600, 480]);
   assert.equal(manifest.nodes.length, nodes.length);
   assert.deepEqual(manifestNodeIds, nodeIds);
 
@@ -310,6 +317,7 @@ test("node-local terrain crops cover all nine scenes and stay within the size bu
     assert.ok(entry.sizes.tint > 0, entry.nodeId + " tint should be non-empty");
     assert.ok(entry.sizes.hillshade > 0, entry.nodeId + " hillshade should be non-empty");
     assert.ok(entry.sizes.pair <= 1_500_000, entry.nodeId + " crop pair must respect budget");
+    assert.ok([960, 840, 720, 600, 480].includes(entry.chosenLongEdge), entry.nodeId + " chosen long edge should be from the fixed candidate set");
     assert.ok(entry.resolution.width > 0 && entry.resolution.height > 0, entry.nodeId + " resolution must be positive");
     assert.ok(
       withinBounds(node.anchor, [entry.bbox.west, entry.bbox.south, entry.bbox.east, entry.bbox.north]),
@@ -331,6 +339,29 @@ test("node-local terrain crops cover all nine scenes and stay within the size bu
       stat(new URL(`${nodeId}-hillshade.png`, terrainNodeDir)),
     ]);
   }
+});
+
+test("node terrain candidate selection picks the first fitting long-edge and fails when all exceed budget", async () => {
+  const { NODE_TERRAIN_LONG_EDGE_CANDIDATES, selectNodeTerrainVariant } = await loadNodeTerrainSizingModule();
+
+  const chosen = await selectNodeTerrainVariant({
+    aspect: 1.4,
+    measure: (width, height) => ({
+      tint: width * height > 700000 ? 400000 : 200000,
+      hillshade: width * height > 700000 ? 350000 : 150000,
+    }),
+  });
+
+  assert.equal(chosen.longEdge, NODE_TERRAIN_LONG_EDGE_CANDIDATES[0]);
+  assert.ok(chosen.pairBytes <= 1_500_000);
+
+  await assert.rejects(
+    selectNodeTerrainVariant({
+      aspect: 1.4,
+      measure: () => ({ tint: 1_000_000, hillshade: 600_000 }),
+    }),
+    /1\.5MB/
+  );
 });
 
 test("ensureMajorContours adds the 200m contour layer once and preserves requested visibility", async () => {
