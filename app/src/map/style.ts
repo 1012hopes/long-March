@@ -35,18 +35,48 @@ export const ROUTE_LAYER_IDS = routeGeometry.flatMap((line) =>
 );
 
 export const MAP_LAYER_IDS: Record<MapLayerKey, string[]> = {
-  terrain: ["global-terrain-color", "terrain-relief"],
+  terrain: ["offline-terrain-color", "offline-terrain-relief"],
   contours: ["contour-major", "contour-mid", "contour-fine"],
   water: ["lakes-fill", "rivers-line"],
   route: ROUTE_LAYER_IDS,
 };
 
+function offlineTerrainCoordinates(hillshade: HillshadeBbox) {
+  return [
+    [hillshade.west, hillshade.north],
+    [hillshade.east, hillshade.north],
+    [hillshade.east, hillshade.south],
+    [hillshade.west, hillshade.south],
+  ] as const;
+}
+
+async function probeLocalImage(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, { method: "HEAD" });
+    if (res.ok) return true;
+  } catch {
+    // 静态托管若不支持 HEAD，则退回真实图片探测。
+  }
+
+  return await new Promise<boolean>((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(true);
+    image.onerror = () => resolve(false);
+    image.src = url;
+  });
+}
+
 /** 运行时探测构建产物：山体阴影图及其地理范围（缺失则自动跳过该图层） */
 export async function probeHillshade(): Promise<HillshadeBbox | null> {
   try {
-    const res = await fetch("terrain/hillshade-bbox.json");
-    if (!res.ok) return null;
-    return (await res.json()) as HillshadeBbox;
+    const bboxRes = await fetch("terrain/hillshade-bbox.json");
+    if (!bboxRes.ok) return null;
+    const [tintOk, hillshadeOk] = await Promise.all([
+      probeLocalImage("terrain/terrain-tint.png"),
+      probeLocalImage("terrain/hillshade.png"),
+    ]);
+    if (!tintOk || !hillshadeOk) return null;
+    return (await bboxRes.json()) as HillshadeBbox;
   } catch {
     return null;
   }
@@ -100,6 +130,20 @@ export function buildStyle(hillshade: HillshadeBbox | null): StyleSpecification 
     },
   };
 
+  if (hillshade) {
+    const coordinates = offlineTerrainCoordinates(hillshade);
+    sources.offlineTerrainTint = {
+      type: "image",
+      url: "terrain/terrain-tint.png",
+      coordinates,
+    };
+    sources.offlineHillshade = {
+      type: "image",
+      url: "terrain/hillshade.png",
+      coordinates,
+    };
+  }
+
   // 每条候选线一个 source（line-gradient 需要 lineMetrics）
   for (const line of routeGeometry) {
     sources[line.id] = {
@@ -134,46 +178,38 @@ export function buildStyle(hillshade: HillshadeBbox | null): StyleSpecification 
     },
   ];
 
+  if (hillshade) {
+    layers.push(
+      {
+        id: "offline-terrain-color",
+        type: "raster",
+        source: "offlineTerrainTint",
+        paint: {
+          "raster-opacity": 0.34,
+          "raster-brightness-min": 0.06,
+          "raster-brightness-max": 0.94,
+          "raster-saturation": -0.08,
+          "raster-contrast": -0.06,
+          "raster-resampling": "linear",
+        },
+      },
+      {
+        id: "offline-terrain-relief",
+        type: "raster",
+        source: "offlineHillshade",
+        paint: {
+          "raster-opacity": 0.38,
+          "raster-brightness-min": 0.1,
+          "raster-brightness-max": 0.96,
+          "raster-saturation": -1,
+          "raster-contrast": 0.18,
+          "raster-resampling": "linear",
+        },
+      }
+    );
+  }
+
   layers.push(
-    {
-      id: "global-terrain-color",
-      type: "color-relief",
-      source: "terrainColorDem",
-      paint: {
-        "color-relief-opacity": 0.9,
-        "color-relief-color": [
-          "interpolate",
-          ["linear"],
-          ["elevation"],
-          -11000, "#B9CBD4",
-          -1000, "#CEDCE1",
-          0, "#DCE7E5",
-          1, "#D4E0C8",
-          200, "#DCE5C5",
-          600, "#CFD7B2",
-          1200, "#D3CAA6",
-          2000, "#C9BA97",
-          3000, "#B8AC98",
-          4000, "#C7C3BA",
-          5400, "#EBEBE5"
-        ],
-        "resampling": "linear",
-      },
-    },
-    {
-      id: "terrain-relief",
-      type: "hillshade",
-      source: "terrainDem",
-      paint: {
-        "hillshade-exaggeration": 0.1,
-        "hillshade-shadow-color": "#5C5F52",
-        "hillshade-highlight-color": "#FCFAF5",
-        "hillshade-accent-color": "#8C8F7C",
-        "hillshade-illumination-direction": 315,
-        "hillshade-method": "multidirectional",
-        "resampling": "linear",
-      },
-    },
     {
       id: "coastline-overlay",
       type: "line",

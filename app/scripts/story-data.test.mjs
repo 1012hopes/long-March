@@ -110,9 +110,11 @@ test("natural topographic base uses elevation tint and restrained multidirection
   assert.ok(terrainScript.includes("MULTI_AZIMUTHS"));
   assert.ok(terrainScript.includes("ELEVATION_COLORS"));
   assert.ok(styleText.includes("terrainColorDem"));
-  assert.ok(styleText.includes('"color-relief"'));
-  assert.ok(styleText.includes("global-terrain-color"));
-  assert.ok(styleText.includes('"hillshade-method": "multidirectional"'));
+  assert.ok(styleText.includes('type: "image"'));
+  assert.ok(styleText.includes("offlineTerrainTint"));
+  assert.ok(styleText.includes("offline-terrain-color"));
+  assert.ok(styleText.includes("offline-terrain-relief"));
+  assert.ok(styleText.includes('"raster-opacity": 0.38'));
   assert.ok(styleText.includes('["get", "scalerank"]'));
   assert.ok(layerPanelText.includes("高程分层设色"));
 });
