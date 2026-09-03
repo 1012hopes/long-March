@@ -36,8 +36,8 @@ const prefersReducedMotion = () =>
 
 export default function LeftTimeline(p: Props) {
   const listRef = useRef<HTMLOListElement>(null);
-  // 首次渲染不抢占阅读位置；之后只在明确选中节点时跟随。
-  const mountedRef = useRef(false);
+  // 首次提交若带着 hash 恢复的选中节点，不抢占阅读位置；后续显式选中或重开面板仍跟随。
+  const suppressInitialSelectedScrollRef = useRef(true);
   const markers = useMemo(() => timelineMarkers(), []);
 
   // 当前时间驱动的“节点脊柱”位置，按真实日期而非等间距列表。
@@ -57,12 +57,14 @@ export default function LeftTimeline(p: Props) {
   useEffect(() => {
     if (p.collapsed) return;
     if (!p.selectedNodeId) return;
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-    }
+    if (suppressInitialSelectedScrollRef.current) return;
     const el = listRef.current?.querySelector<HTMLLIElement>(`[data-node="${p.selectedNodeId}"]`);
     el?.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
   }, [p.collapsed, p.mobileOpen, p.selectedNodeId]);
+
+  useEffect(() => {
+    suppressInitialSelectedScrollRef.current = false;
+  }, []);
 
   return (
     <aside className={`left-panel ${p.collapsed ? "rail" : "expanded"} ${p.mobileOpen ? "mobile-open" : ""}`}>
