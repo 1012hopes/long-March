@@ -112,6 +112,8 @@ test("bottom scrubber provides a drag preview and 44px touch targets", async () 
   assert.match(bottomText, /onPointerUp/);
   assert.match(bottomText, /onPointerCancel/);
   assert.match(bottomText, /onBlur/);
+  assert.match(bottomText, /bs-time-kicker/);
+  assert.match(bottomText, />当前时点</);
   assert.ok(cssText.includes("min-height: 44px;"));
   assert.ok(cssText.includes("min-width: 44px;"));
   assert.ok(cssText.includes(".scrub-preview"));

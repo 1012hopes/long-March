@@ -1036,6 +1036,21 @@ li.current .tl-title {
   padding-top: 10px;
 }
 
+.bs-time-readout {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 96px;
+  line-height: 1.15;
+}
+
+.bs-time-kicker {
+  color: var(--ink-soft);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+}
+
 .time-scrubber {
   flex: 1;
   width: 100%;
@@ -3856,6 +3871,14 @@ summary:focus-visible {
     padding-top: 0;
   }
 
+  .bs-time-readout {
+    min-width: 0;
+  }
+
+  .bs-time-kicker {
+    margin-bottom: 4px;
+  }
+
   .scrub-wrap {
     grid-column: 1 / -1;
     width: 100%;
@@ -3877,32 +3900,32 @@ summary:focus-visible {
   }
 
   .bs-elev {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     width: 100%;
     margin: 0;
     gap: 6px;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    scrollbar-width: none;
-  }
-
-  .bs-elev::-webkit-scrollbar {
-    display: none;
-  }
-
-  .bs-elev > * {
-    flex: none;
+    overflow: visible;
   }
 
   .bs-elev .mono,
   .bs-elev .fine {
-    max-width: 176px;
+    grid-column: 1 / -1;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
+  .bs-elev .mini-btn {
+    width: 100%;
+    min-height: 44px;
+    padding-inline: 5px;
+    white-space: nowrap;
+  }
+
   .mobile-sheet-toggle {
-    bottom: 214px;
+    bottom: 252px;
     min-height: 44px;
   }
 }

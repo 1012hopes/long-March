@@ -103,7 +103,10 @@ export default function BottomPanel(p: Props) {
 
       <div className="bottom-summary">
         <div className="bs-date">
-          <span className="bs-date-label mono">{currentLabel}</span>
+          <span className="bs-time-readout">
+            <span className="bs-time-kicker">当前时点</span>
+            <span className="bs-date-label mono">{currentLabel}</span>
+          </span>
           <button className="mini-btn" onClick={p.onPlayToggle}>
             {p.playing ? "暂停" : "▶"}
           </button>
