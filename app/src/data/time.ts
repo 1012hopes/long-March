@@ -1,8 +1,18 @@
+import { nodes, type NodeUnit } from "./nodes.ts";
+
 // 时间进度模型：主线 1934-10-10 → 1935-10-22 映射到 0..1
 // 窗口数据来自 research/route-segment-register.csv 与 node-register.csv
 const T0 = Date.parse("1934-10-10T00:00:00Z");
 const T1 = Date.parse("1935-10-22T00:00:00Z");
 const SPAN = T1 - T0;
+
+export type TimelineMarker = {
+  id: string;
+  t: number;
+  title: string;
+  dateLabel: string;
+  precision: NodeUnit["precision"];
+};
 
 export const dateToT = (iso: string) =>
   Math.max(0, Math.min(1, (Date.parse(`${iso}T00:00:00Z`) - T0) / SPAN));
@@ -61,6 +71,25 @@ export const NODE_FRACTIONS: Record<string, number> = Object.fromEntries(
 export const SEG_FRACTIONS: Record<string, [number, number]> = Object.fromEntries(
   Object.entries(SEG_WINDOWS).map(([id, [a, b]]) => [id, [dateToT(a), dateToT(b)]])
 );
+
+export function clampTimelineT(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+export function timelineMarkers(): TimelineMarker[] {
+  return nodes
+    .map((node) => {
+      const [date] = NODE_DATES[node.id];
+      return {
+        id: node.id,
+        t: NODE_FRACTIONS[node.id],
+        title: node.title,
+        dateLabel: isoToDateLabel(date),
+        precision: node.precision,
+      };
+    })
+    .sort((a, b) => a.t - b.t);
+}
 
 /** 当前 t 落在哪一段 */
 export function activeSegmentAt(t: number): string {

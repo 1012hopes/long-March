@@ -9,6 +9,7 @@
     "test:map": "node --experimental-strip-types --test scripts/map-overview.test.mjs",
     "test:markers": "node --experimental-strip-types --test scripts/marker-presentation.test.mjs",
     "test:learning": "node --experimental-strip-types --test scripts/learning-focus.test.mjs",
+    "test:timeline": "node --experimental-strip-types --test scripts/timeline-model.test.mjs",
     "test:stories": "node --test scripts/story-data.test.mjs",
     "preview": "vite preview",
     "geo": "node scripts/fetch-geo.mjs",
