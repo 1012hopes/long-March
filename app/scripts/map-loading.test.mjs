@@ -130,6 +130,10 @@ class FakeMap {
     this.listeners.get(type)?.delete(listener);
   }
 
+  listenerCount(type) {
+    return this.listeners.get(type)?.size ?? 0;
+  }
+
   emit(type, event) {
     for (const listener of [...(this.listeners.get(type) ?? [])]) {
       listener(event);
@@ -366,12 +370,55 @@ test("ensureOnlineTerrain resolves offline on timeout without throwing into call
   assert.equal(map.getSource("terrainDem"), undefined);
 });
 
+test("cancelOnlineTerrain clears pending listeners and timers before map removal", async () => {
+  const { cancelOnlineTerrain, ensureOnlineTerrain } = await loadTerrainRuntimeModule();
+  const map = new FakeMap();
+  const pendingTimers = new Map();
+  const clearedTimers = [];
+  let nextTimerId = 1;
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  globalThis.setTimeout = (callback, delay, ...args) => {
+    const timer = { callback, delay, args };
+    const timerId = nextTimerId++;
+    pendingTimers.set(timerId, timer);
+    return timerId;
+  };
+  globalThis.clearTimeout = (timerId) => {
+    clearedTimers.push(timerId);
+    pendingTimers.delete(timerId);
+  };
+
+  try {
+    const promise = ensureOnlineTerrain(map);
+    assert.equal(map.listenerCount("sourcedata"), 1);
+    assert.equal(map.listenerCount("error"), 1);
+    assert.equal(pendingTimers.size, 1);
+
+    cancelOnlineTerrain(map);
+    map.remove();
+    map.emit("sourcedata", { sourceId: "terrainDem", isSourceLoaded: true });
+    map.emit("error", { sourceId: "terrainDem" });
+
+    assert.equal(map.listenerCount("sourcedata"), 0);
+    assert.equal(map.listenerCount("error"), 0);
+    assert.equal(pendingTimers.size, 0);
+    assert.equal(clearedTimers.length, 1);
+    assert.equal(await promise, "offline");
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+  }
+});
+
 test("runtime helpers return safely after map removal", async () => {
-  const { ensureDetailContours, ensureMajorContours, ensureOnlineTerrain } = await loadTerrainRuntimeModule();
+  const { cancelOnlineTerrain, ensureDetailContours, ensureMajorContours, ensureOnlineTerrain } =
+    await loadTerrainRuntimeModule();
   const map = new FakeMap();
   map.remove();
 
   await assert.doesNotReject(async () => {
+    cancelOnlineTerrain(map);
     await ensureMajorContours(map, true);
     await ensureDetailContours(map, 9, true);
     assert.equal(await ensureOnlineTerrain(map), "offline");

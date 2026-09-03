@@ -2,7 +2,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import maplibregl, { type Map as MlMap, type LngLatBoundsLike } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { buildStyle, MAP_LAYER_IDS, probeHillshade } from "./style";
-import { ensureDetailContours, ensureMajorContours, ensureOnlineTerrain, loadContourLabels } from "./terrainRuntime";
+import {
+  cancelOnlineTerrain,
+  ensureDetailContours,
+  ensureMajorContours,
+  ensureOnlineTerrain,
+  loadContourLabels,
+} from "./terrainRuntime";
 import routeGeometry from "../data/route-geometry.json";
 import { nodes, epilogue } from "../data/nodes";
 import { stories } from "../data/stories";
@@ -425,6 +431,7 @@ export default function MapCanvas(props: Props) {
 
     return () => {
       disposed = true;
+      if (map) cancelOnlineTerrain(map);
       map?.remove();
       mapRef.current = null;
       contourRuntimeStartedRef.current = false;
@@ -612,6 +619,7 @@ export default function MapCanvas(props: Props) {
     void syncTerrain();
     return () => {
       cancelled = true;
+      cancelOnlineTerrain(map);
     };
   }, [props.terrain3d, ready]);
 

@@ -9,8 +9,28 @@ type RuntimeState = {
   majorContoursPromise: Promise<void> | null;
   midContoursPromise: Promise<void> | null;
   fineContoursPromise: Promise<void> | null;
-  onlineTerrainPromise: Promise<"ready" | "offline"> | null;
+  onlineTerrainPending: PendingOnlineTerrain | null;
   onlineTerrainReady: boolean;
+};
+
+type OnlineTerrainResult = "ready" | "offline";
+
+type OnlineTerrainSourceEvent = {
+  sourceId?: string;
+  isSourceLoaded?: boolean;
+};
+
+type OnlineTerrainErrorEvent = {
+  sourceId?: string;
+};
+
+type PendingOnlineTerrain = {
+  promise: Promise<OnlineTerrainResult>;
+  resolve: (result: OnlineTerrainResult) => void;
+  onSourceData: (event: OnlineTerrainSourceEvent) => void;
+  onError: (event: OnlineTerrainErrorEvent) => void;
+  settled: boolean;
+  timeoutId: ReturnType<typeof setTimeout> | null;
 };
 
 const CONTOUR_INSERT_BEFORE = "graticule";
@@ -89,7 +109,7 @@ function stateFor(map: MlMap): RuntimeState {
     majorContoursPromise: null,
     midContoursPromise: null,
     fineContoursPromise: null,
-    onlineTerrainPromise: null,
+    onlineTerrainPending: null,
     onlineTerrainReady: false,
   };
   runtimeStates.set(map, created);
@@ -170,6 +190,28 @@ function removeOnlineTerrainSource(map: MlMap) {
   });
 }
 
+function finishPendingOnlineTerrain(
+  map: MlMap,
+  state: RuntimeState,
+  pending: PendingOnlineTerrain,
+  result: OnlineTerrainResult
+) {
+  if (pending.settled) return;
+  pending.settled = true;
+  state.onlineTerrainPending = null;
+  state.onlineTerrainReady = result === "ready";
+  if (pending.timeoutId !== null) {
+    clearTimeout(pending.timeoutId);
+    pending.timeoutId = null;
+  }
+  withMapGuard(map, undefined, () => {
+    map.off("sourcedata", pending.onSourceData);
+    map.off("error", pending.onError);
+  });
+  if (result === "offline") removeOnlineTerrainSource(map);
+  pending.resolve(result);
+}
+
 export async function loadContourLabels(): Promise<ContourLabelCollection | null> {
   if (!contourLabelPromise) {
     contourLabelPromise = fetch("terrain/contour-labels.geojson")
@@ -196,61 +238,66 @@ export async function ensureDetailContours(map: MlMap, zoom: number, visible = t
   }
 }
 
-export async function ensureOnlineTerrain(map: MlMap): Promise<"ready" | "offline"> {
+export function cancelOnlineTerrain(map: MlMap): void {
+  const state = runtimeStates.get(map);
+  if (!state) return;
+  state.onlineTerrainReady = false;
+  if (!state.onlineTerrainPending) {
+    removeOnlineTerrainSource(map);
+    return;
+  }
+  finishPendingOnlineTerrain(map, state, state.onlineTerrainPending, "offline");
+}
+
+export async function ensureOnlineTerrain(map: MlMap): Promise<OnlineTerrainResult> {
   const state = stateFor(map);
   if (state.onlineTerrainReady && hasSource(map, "terrainDem")) return "ready";
-  if (state.onlineTerrainPromise) return state.onlineTerrainPromise;
+  if (state.onlineTerrainPending) return state.onlineTerrainPending.promise;
 
-  state.onlineTerrainPromise = new Promise<"ready" | "offline">((resolve) => {
-    let settled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-    const finish = (result: "ready" | "offline") => {
-      if (settled) return;
-      settled = true;
-      state.onlineTerrainPromise = null;
-      state.onlineTerrainReady = result === "ready";
-      if (timeoutId !== null) clearTimeout(timeoutId);
-      withMapGuard(map, undefined, () => {
-        map.off("sourcedata", onSourceData);
-        map.off("error", onError);
-      });
-      if (result === "offline") removeOnlineTerrainSource(map);
-      resolve(result);
+  let pending: PendingOnlineTerrain;
+  const promise = new Promise<OnlineTerrainResult>((resolve) => {
+    const onSourceData = (event: OnlineTerrainSourceEvent) => {
+      if (event.sourceId === "terrainDem" && event.isSourceLoaded) finishPendingOnlineTerrain(map, state, pending, "ready");
     };
 
-    const onSourceData = (event: { sourceId?: string; isSourceLoaded?: boolean }) => {
-      if (event.sourceId === "terrainDem" && event.isSourceLoaded) finish("ready");
+    const onError = (event: OnlineTerrainErrorEvent) => {
+      if (event.sourceId === "terrainDem") finishPendingOnlineTerrain(map, state, pending, "offline");
     };
 
-    const onError = (event: { sourceId?: string }) => {
-      if (event.sourceId === "terrainDem") finish("offline");
+    pending = {
+      promise: undefined as never,
+      resolve,
+      onSourceData,
+      onError,
+      settled: false,
+      timeoutId: null,
     };
+  });
+  pending!.promise = promise;
+  state.onlineTerrainPending = pending!;
 
-    const hooked = withMapGuard(map, false, () => {
-      map.on("sourcedata", onSourceData);
-      map.on("error", onError);
-      return true;
-    });
-
-    if (!hooked) {
-      finish("offline");
-      return;
-    }
-
-    if (!hasSource(map, "terrainDem")) {
-      const added = withMapGuard(map, false, () => {
-        map.addSource("terrainDem", onlineTerrainSource as never);
-        return true;
-      });
-      if (!added) {
-        finish("offline");
-        return;
-      }
-    }
-
-    timeoutId = setTimeout(() => finish("offline"), ONLINE_TERRAIN_TIMEOUT_MS);
+  const hooked = withMapGuard(map, false, () => {
+    map.on("sourcedata", pending!.onSourceData);
+    map.on("error", pending!.onError);
+    return true;
   });
 
-  return state.onlineTerrainPromise;
+  if (!hooked) {
+    finishPendingOnlineTerrain(map, state, pending!, "offline");
+    return promise;
+  }
+
+  if (!hasSource(map, "terrainDem")) {
+    const added = withMapGuard(map, false, () => {
+      map.addSource("terrainDem", onlineTerrainSource as never);
+      return true;
+    });
+    if (!added) {
+      finishPendingOnlineTerrain(map, state, pending!, "offline");
+      return promise;
+    }
+  }
+
+  pending!.timeoutId = setTimeout(() => finishPendingOnlineTerrain(map, state, pending!, "offline"), ONLINE_TERRAIN_TIMEOUT_MS);
+  return promise;
 }
