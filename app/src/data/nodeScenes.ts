@@ -69,6 +69,13 @@ function storyPoint(storyId: string): Coord {
   return story.location;
 }
 
+function routePoint(lineId: string, index: number): Coord {
+  const line = routeGeometry.find((candidate) => candidate.id === lineId);
+  const point = line?.coordinates[index];
+  if (!point) throw new Error(`Unknown route point ${lineId}[${index}]`);
+  return [point[0], point[1]];
+}
+
 function makeBounds(points: Coord[], [padLon, padLat]: Coord): [number, number, number, number] {
   let west = Infinity;
   let south = Infinity;
@@ -220,7 +227,7 @@ const sceneSeeds: SceneSeed[] = [
     contextSegmentIds: ["seg-02"],
     terrainMode: "plain",
     focusPad: [0.22, 0.18],
-    focusPoints: [nodeAnchor("node-04"), storyPoint("story-23"), [106.55, 27.94], [106.95, 27.6]],
+    focusPoints: [nodeAnchor("node-04"), storyPoint("story-23"), routePoint("seg-04a", 1), routePoint("seg-03", 2)],
     annotations: [
       {
         id: "scene-node-04-meeting-zunyi",
@@ -242,7 +249,7 @@ const sceneSeeds: SceneSeed[] = [
         id: "scene-node-04-river-wu",
         kind: "river",
         label: "乌江",
-        location: [106.95, 27.6],
+        location: routePoint("seg-03", 2),
         sourceIds: ["hist-020", "hist-036", "hist-037"],
         certainty: "approximate",
       },
@@ -250,7 +257,7 @@ const sceneSeeds: SceneSeed[] = [
         id: "scene-node-04-direction-chishui",
         kind: "direction",
         label: "回师赤水",
-        location: [106.55, 27.94],
+        location: routePoint("seg-04a", 1),
         sourceIds: ["hist-007", "hist-020"],
         certainty: "approximate",
       },
@@ -262,7 +269,7 @@ const sceneSeeds: SceneSeed[] = [
     contextSegmentIds: ["seg-05"],
     terrainMode: "river-valley",
     focusPad: [0.22, 0.2],
-    focusPoints: [storyPoint("story-18"), secondaryPoint("node-05", "太平渡"), [105.72, 28.12], [106.6, 27.2]],
+    focusPoints: [storyPoint("story-18"), secondaryPoint("node-05", "太平渡"), routePoint("seg-04a", 14)],
     annotations: [
       {
         id: "scene-node-05-origin-loushanguan",
@@ -284,7 +291,7 @@ const sceneSeeds: SceneSeed[] = [
         id: "scene-node-05-river-chishui",
         kind: "river",
         label: "赤水河",
-        location: [105.72, 28.12],
+        location: secondaryPoint("node-05", "太平渡"),
         sourceIds: ["hist-009", "hist-010"],
         certainty: "approximate",
       },
@@ -292,7 +299,7 @@ const sceneSeeds: SceneSeed[] = [
         id: "scene-node-05-direction-wujiang",
         kind: "direction",
         label: "南渡乌江",
-        location: [106.6, 27.2],
+        location: routePoint("seg-04a", 14),
         sourceIds: ["hist-009", "hist-010"],
         certainty: "approximate",
       },
@@ -346,7 +353,7 @@ const sceneSeeds: SceneSeed[] = [
     contextSegmentIds: ["seg-05"],
     terrainMode: "river-valley",
     focusPad: [0.15, 0.18],
-    focusPoints: [storyPoint("story-08"), [102.28, 29.55], storyPoint("story-09")],
+    focusPoints: [storyPoint("story-08"), routePoint("seg-06", 7), storyPoint("story-09")],
     annotations: [
       {
         id: "scene-node-07-crossing-anshunchang",
@@ -360,7 +367,7 @@ const sceneSeeds: SceneSeed[] = [
         id: "scene-node-07-river-dadu",
         kind: "river",
         label: "大渡河",
-        location: [102.28, 29.55],
+        location: routePoint("seg-06", 7),
         sourceIds: ["hist-013", "hist-014", "hist-021"],
         certainty: "approximate",
       },
@@ -368,7 +375,7 @@ const sceneSeeds: SceneSeed[] = [
         id: "scene-node-07-direction-river",
         kind: "direction",
         label: "沿河北进",
-        location: [102.3, 29.62],
+        location: routePoint("seg-06", 7),
         sourceIds: ["hist-013", "hist-014", "hist-021"],
         certainty: "approximate",
       },

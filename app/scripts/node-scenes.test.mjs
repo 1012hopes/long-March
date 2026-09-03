@@ -64,11 +64,13 @@ test("node scenes use valid bounds, references, and traceable annotations", () =
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const knownSegmentIds = new Set(segments.map((segment) => segment.id));
   const knownSourceIds = new Set(sources.map((source) => source.id));
-  const traceablePoints = new Set([
+  const nodePoints = new Set([
     ...nodes.map((node) => pointKey(node.anchor)),
     ...nodes.flatMap((node) => node.secondary.map((place) => pointKey([place.lon, place.lat]))),
-    ...stories.map((story) => pointKey(story.location)),
   ]);
+  const storyPoints = new Set(stories.map((story) => pointKey(story.location)));
+  const routePoints = new Set(routeGeometry.flatMap((line) => line.coordinates.map((point) => pointKey(point))));
+  const approximateTraceablePoints = new Set([...nodePoints, ...storyPoints, ...routePoints]);
   const annotationIds = new Set();
   const chinaRouteBounds = routeBounds();
 
@@ -113,7 +115,11 @@ test("node scenes use valid bounds, references, and traceable annotations", () =
       }
 
       if (annotation.certainty === "confirmed") {
-        assert.ok(traceablePoints.has(pointKey(annotation.location)), annotation.id + " must reuse a traceable point");
+        assert.ok(nodePoints.has(pointKey(annotation.location)) || storyPoints.has(pointKey(annotation.location)), annotation.id + " must reuse a node or story point");
+      }
+
+      if (annotation.certainty === "approximate") {
+        assert.ok(approximateTraceablePoints.has(pointKey(annotation.location)), annotation.id + " must reuse a node, story, or route point");
       }
     }
   }

@@ -103,20 +103,21 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 - 新增 `app/src/data/nodeScenes.ts`，导出 `NodeSceneAnnotationKind`、`NodeMapScene`、`nodeScenes` 与 `sceneForNode()`，总计 9 条场景记录，与 `nodes.ts` 九个教学节点一一对应。
 - 每条场景都包含至少 1 个 `highlightedSegmentIds`、至少 2 条标注，并为后续 Task 5 预留了 `contextSegmentIds`、`terrainMode` 和局部 `focusBounds`。
 - `focusBounds` 未手填假精度坐标，而是由现有节点锚点、次级地点、故事点位和既有路线几何点外扩生成，并钳制在长征路线总范围内。
-- 确认类标注只复用现有可追溯点位：节点锚点、`secondary` 坐标或 `stories.json` 中的故事位置；方向类标注统一使用 `certainty: "approximate"`。
+- 确认类标注只复用现有可追溯点位：节点锚点、`secondary` 坐标或 `stories.json` 中的故事位置；约略类标注也必须复用现有 `nodes.ts`、`stories.json` 或 `route-geometry.json` 的精确点位，不再允许手填“接近但不一致”的坐标。
 - 地形模式当前按教学意图落位：`node-01/02/05/06/07` 为 `river-valley`，`node-03/08` 为 `mountain`，`node-04` 为 `plain`，`node-09` 为 `plateau`。
-- 新增 `app/scripts/node-scenes.test.mjs` 直接导入真实场景数据，验证九节点覆盖、`sceneForNode()` 查询、边界合法性、segment/source 引用有效性、全局唯一 annotation ID、确认/约略标注契约与标签长度约束。
+- `scene-node-04-river-wu` 现复用 `seg-03` 既有路线点，`scene-node-05-river-chishui` 复用 `node-05` 的 `太平渡` 次级地点，`scene-node-07-direction-river` 复用 `seg-06` 河谷路线点，修复了先前 3 个未对齐的近似坐标。
+- 新增 `app/scripts/node-scenes.test.mjs` 直接导入真实场景数据，验证九节点覆盖、`sceneForNode()` 查询、边界合法性、segment/source 引用有效性、全局唯一 annotation ID、确认标注必须命中 node/story 点、约略标注必须命中 node/story/route 点，以及标签长度约束。
 - 为了让 Node 测试路径与浏览器构建路径保持一致，`app/src/data/stories.ts` 的 JSON 导入改为显式 `with { type: "json" }`；`nodeScenes.ts` 也使用同样写法。
 
 ## Task 4 仍需人工复核的点
 
-- `node-02` 的“湘江 / 西进突围”与 `node-04` 的“乌江 / 回师赤水”是基于现有走廊几何与史料阶段描述生成的近似标注，适合教学导览，但仍建议 GIS 人工确认最佳展签落点。
-- `node-05`、`node-07` 的河谷方向箭头与 `node-08`、`node-09` 的后续北上方向，当前使用现有路线折点表达“方向”而非新增渡口/山口精确坐标；后续若要进入公开发布底图，需继续人工复核。
+- `node-02` 的“湘江 / 西进突围”与 `node-04` 的“乌江 / 回师赤水”虽然已全部绑定到现有 node/route 点，但这些点仍是教学级展签位置，后续如进入公开发布底图，仍建议 GIS 人工确认最佳摆放。
+- `node-05`、`node-07` 的河谷与行军方向标签已改为复用 `太平渡` / `seg-06` 等现有精确点位，但“哪一个现有点最适合承担河名或方向说明”仍属于展签设计判断，需继续人工复核。
 - `node-04` 的“桑木垭”与 `node-08` 的“懋功会师”保留为 `approximate`，因为现有故事点位与叙事范围能够支持教学定位，但不足以宣称会场/纪念地点精确落点。
 
 ## Task 4 验证证据
 
-- `npm run test:scenes`：PASS（2 个断言通过，覆盖九节点完整性、lookup、bounds、segment/source 引用与确认/约略标注规则）。
+- `npm run test:scenes`：PASS（2 个断言通过，覆盖九节点完整性、lookup、bounds、segment/source 引用，以及确认标注命中 node/story 点、约略标注命中 node/story/route 点的 provenance 规则）。
 - `npm run test:loading`：PASS（11 个断言通过）。
 - `npm run test:stories`：PASS（8 个断言通过）。
 - `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-CU4BhB1s.js` gzip 393.56 kB）。
