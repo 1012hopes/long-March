@@ -14,6 +14,13 @@ export type StoryImage = {
   credit: string;
 };
 
+// 官方影像：只存权威平台的播放页链接（不复制、不转存视频文件）。
+export type StoryVideo = {
+  url: string;
+  title: string;
+  credit: string;
+};
+
 export type StoryPoint = {
   id: string;
   nodeId: string;
@@ -30,6 +37,7 @@ export type StoryPoint = {
   question: string;
   // 文物/历史照片槽位：仅在取得书面授权后填充（见 research/rights-register.csv）
   image?: StoryImage;
+  video?: StoryVideo;
 };
 
 export const stories = storyData as StoryPoint[];

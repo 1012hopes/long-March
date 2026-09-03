@@ -3508,3 +3508,53 @@ summary:focus-visible {
     top: 130px;
   }
 }
+
+/* ---------- 故事卡官方影像链接卡 ---------- */
+.story-video {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 4px;
+  padding: 11px 14px;
+  border: 1px solid var(--evidence-blue);
+  border-radius: 5px;
+  background: rgba(49, 94, 120, 0.07);
+  color: var(--ink);
+  text-decoration: none;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.story-video:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(28, 29, 27, 0.12);
+}
+
+.story-video-play {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: var(--evidence-blue);
+  color: var(--paper-light);
+  border-radius: 50%;
+  font-size: 11px;
+  padding-left: 2px;
+}
+
+.story-video-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.story-video-body strong {
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.story-video-body small {
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.5;
+}

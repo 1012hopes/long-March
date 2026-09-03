@@ -171,6 +171,17 @@ function StoryCard({ story, p }: { story: StoryPoint; p: Props }) {
         </div>
       </header>
 
+      {story.video && (
+        <a className="story-video" href={story.video.url} target="_blank" rel="noreferrer">
+          <span className="story-video-play" aria-hidden="true">▶</span>
+          <span className="story-video-body">
+            <strong>官方影像：{story.video.title}</strong>
+            <small>{story.video.credit}（平台播放，不复制原始影像）</small>
+          </span>
+          <span aria-hidden="true">↗</span>
+        </a>
+      )}
+
       {story.image && (
         <figure className="story-figure">
           <img src={story.image.src} alt={story.image.alt} loading="lazy" />
