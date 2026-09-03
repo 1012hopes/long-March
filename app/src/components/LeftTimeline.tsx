@@ -85,8 +85,8 @@ export default function LeftTimeline(p: Props) {
           </div>
 
           <div className="timeline-layout">
-            <div className="timeline-side" aria-hidden="true">
-              <div className="timeline-scale">
+            <div className="timeline-side">
+              <div className="timeline-scale" aria-hidden="true">
                 {SCALE_TICKS.map((tick, index) => (
                   <div
                     key={tick.label}
@@ -98,7 +98,7 @@ export default function LeftTimeline(p: Props) {
                   </div>
                 ))}
               </div>
-              <div className="timeline-rail">
+              <div className="timeline-rail" aria-hidden="true">
                 <div className="timeline-track" />
                 <div className="timeline-current" style={{ top: `${p.timelineT * 100}%` }} />
               </div>

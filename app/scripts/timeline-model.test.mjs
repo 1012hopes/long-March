@@ -90,6 +90,7 @@ test("left rail renders a neutral track and current-time indicator instead of a 
   assert.match(leftText, /1935年1月/);
   assert.match(leftText, /1935年5月/);
   assert.match(leftText, /1935年10月/);
+  assert.ok(!leftText.includes('timeline-side" aria-hidden="true"'));
   assert.match(leftText, /timeline-current/);
   assert.match(cssText, /timeline-current/);
   assert.match(cssText, /timeline-scale/);
