@@ -3,7 +3,7 @@ import { nodes } from "../data/nodes";
 import { NODE_FRACTIONS, isoToDateLabel, NODE_DATES } from "../data/time";
 
 type Props = {
-  progress: number;
+  timelineT: number;
   selectedNodeId: string | null;
   collapsed: boolean;
   mobileOpen?: boolean;
@@ -30,10 +30,10 @@ export default function LeftTimeline(p: Props) {
   const activeNodeId = useMemo(() => {
     let current = nodes[0].id;
     for (const n of nodes) {
-      if (p.progress >= NODE_FRACTIONS[n.id] - 1e-6) current = n.id;
+      if (p.timelineT >= NODE_FRACTIONS[n.id] - 1e-6) current = n.id;
     }
     return current;
-  }, [p.progress]);
+  }, [p.timelineT]);
 
   useEffect(() => {
     if (p.collapsed) return;
@@ -65,12 +65,12 @@ export default function LeftTimeline(p: Props) {
             </button>
           </div>
           <div className="timeline-rail" aria-hidden="true">
-            <div className="timeline-fill" style={{ height: `${p.progress * 100}%` }} />
+            <div className="timeline-fill" style={{ height: `${p.timelineT * 100}%` }} />
           </div>
           <ol className="timeline-list" ref={listRef}>
             {nodes.map((n) => {
               const frac = NODE_FRACTIONS[n.id];
-              const reached = p.progress >= frac - 1e-6;
+              const reached = p.timelineT >= frac - 1e-6;
               const selected = p.selectedNodeId === n.id;
               const current = n.id === activeNodeId;
               return (

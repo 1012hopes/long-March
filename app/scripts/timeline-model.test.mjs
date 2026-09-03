@@ -8,6 +8,7 @@ import {
   isoToDateLabel,
   timelineMarkers,
 } from "../src/data/time.ts";
+import { readFile } from "node:fs/promises";
 
 test("timeline markers preserve the node order and source metadata", () => {
   const markers = timelineMarkers();
@@ -36,4 +37,21 @@ test("clampTimelineT keeps values inside the unit interval", () => {
   assert.equal(clampTimelineT(-0.25), 0);
   assert.equal(clampTimelineT(0.5), 0.5);
   assert.equal(clampTimelineT(1.25), 1);
+});
+
+test("App separates timelineT from revealT and keeps explore mode pinned to revealT=1", async () => {
+  const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+
+  assert.match(appText, /const \[timelineT, setTimelineT\]/);
+  assert.match(appText, /const \[revealT, setRevealT\]/);
+  assert.match(appText, /mode === "explore"[\s\S]{0,180}setRevealT\(1\)/);
+  assert.match(appText, /setTimelineT\(next\)/);
+  assert.match(appText, /setRevealT\(next\)/);
+});
+
+test("early node selection updates timelineT directly instead of clamping to later route progress", async () => {
+  const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+
+  assert.match(appText, /setTimelineT\(NODE_FRACTIONS\[id\]\)/);
+  assert.ok(!appText.includes("Math.max(t, NODE_FRACTIONS[id])"));
 });

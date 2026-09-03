@@ -20,7 +20,7 @@ type ProfilesFile = { generated: string; profiles: Record<string, SegmentProfile
 const profiles = profilesData as ProfilesFile;
 
 type Props = {
-  progress: number;
+  timelineT: number;
   selectedNodeId: string | null;
   expanded: boolean;
   onToggle: () => void;
@@ -46,7 +46,7 @@ const CERT_HINT = {
 } as const;
 
 export default function BottomPanel(p: Props) {
-  const activeSeg = activeSegmentAt(p.progress);
+  const activeSeg = activeSegmentAt(p.timelineT);
   const segMeta = segments.find((s) => s.id === activeSeg)!;
 
   const profileSegId = useMemo(() => {
@@ -100,7 +100,7 @@ export default function BottomPanel(p: Props) {
 
       <div className="bottom-summary">
         <div className="bs-date">
-          <span className="bs-date-label mono">{tToDateLabel(p.progress)}</span>
+          <span className="bs-date-label mono">{tToDateLabel(p.timelineT)}</span>
           <button className="mini-btn" onClick={p.onPlayToggle}>
             {p.playing ? "暂停" : "▶"}
           </button>
@@ -111,14 +111,14 @@ export default function BottomPanel(p: Props) {
               min={0}
               max={1}
               step={0.001}
-              value={p.progress}
+              value={p.timelineT}
               onChange={(e) => p.onScrub(parseFloat(e.target.value))}
               aria-label="时间进度"
             />
             <div className="scrub-ticks">
               {nodes.map((n) => {
                 const frac = NODE_FRACTIONS[n.id];
-                const reached = p.progress >= frac - 1e-6;
+                const reached = p.timelineT >= frac - 1e-6;
                 return (
                   <button
                     key={n.id}

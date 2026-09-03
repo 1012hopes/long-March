@@ -33,8 +33,15 @@ function unionBounds(lineIds: string[], margin = 0.4): [number, number, number, 
   return [w, s, e, n];
 }
 
-// ---- URL 深链接：#n=节点 & s=故事 & t=进度 & m=模式 & i=导览站 ----
-type HashParams = { mode?: Mode; tourIndex?: number; nodeId?: string; storyId?: string; progress?: number };
+// ---- URL 深链接：#n=节点 & s=故事 & t=时间线 & r=显影 & m=模式 & i=导览站 ----
+type HashParams = {
+  mode?: Mode;
+  tourIndex?: number;
+  nodeId?: string;
+  storyId?: string;
+  timelineT?: number;
+  revealT?: number;
+};
 
 function parseHash(hash: string): HashParams {
   const out: HashParams = {};
@@ -47,7 +54,10 @@ function parseHash(hash: string): HashParams {
     else if (key === "s") out.storyId = value;
     else if (key === "t") {
       const t = parseFloat(value);
-      if (Number.isFinite(t)) out.progress = Math.max(0, Math.min(1, t));
+      if (Number.isFinite(t)) out.timelineT = Math.max(0, Math.min(1, t));
+    } else if (key === "r") {
+      const r = parseFloat(value);
+      if (Number.isFinite(r)) out.revealT = Math.max(0, Math.min(1, r));
     } else if (key === "m" && (value === "tour" || value === "explore" || value === "sources")) {
       out.mode = value;
     } else if (key === "i") {
@@ -64,10 +74,21 @@ function serializeHash(params: HashParams): string {
   if (params.mode === "tour" && typeof params.tourIndex === "number") parts.push(`i=${params.tourIndex}`);
   if (params.nodeId) parts.push(`n=${params.nodeId}`);
   if (params.storyId) parts.push(`s=${params.storyId}`);
-  if (typeof params.progress === "number" && params.progress > 0 && params.progress < 1) {
-    parts.push(`t=${params.progress.toFixed(3)}`);
+  if (typeof params.timelineT === "number" && params.timelineT > 0 && params.timelineT < 1) {
+    parts.push(`t=${params.timelineT.toFixed(3)}`);
+  }
+  if (typeof params.revealT === "number" && params.revealT > 0 && params.revealT < 1) {
+    parts.push(`r=${params.revealT.toFixed(3)}`);
   }
   return parts.length ? `#${parts.join("&")}` : "";
+}
+
+function nodeAtTimelineT(t: number): NodeUnit {
+  let current = nodes[0];
+  for (const node of nodes) {
+    if (t >= NODE_FRACTIONS[node.id] - 1e-6) current = node;
+  }
+  return current;
 }
 
 export default function App() {
@@ -75,7 +96,8 @@ export default function App() {
   const initialHash = useMemo(() => parseHash(window.location.hash), []);
   const [mode, setMode] = useState<Mode>(initialHash.mode ?? "explore");
   const [tourIndex, setTourIndex] = useState(initialHash.tourIndex ?? 0);
-  const [progress, setProgress] = useState(initialHash.progress ?? 1);
+  const [timelineT, setTimelineT] = useState(initialHash.timelineT ?? 1);
+  const [revealT, setRevealT] = useState(initialHash.revealT ?? 1);
   const [playing, setPlaying] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(initialHash.nodeId ?? null);
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(initialHash.storyId ?? null);
@@ -113,8 +135,16 @@ export default function App() {
   const [terrainOffline, setTerrainOffline] = useState(false);
 
   const seqRef = useRef(0);
-  const progressRef = useRef(progress);
-  progressRef.current = progress;
+  const timelineRef = useRef(timelineT);
+  timelineRef.current = timelineT;
+  const revealRef = useRef(revealT);
+  revealRef.current = revealT;
+  const selectedNodeRef = useRef(selectedNodeId);
+  selectedNodeRef.current = selectedNodeId;
+  const selectedStoryRef = useRef(selectedStoryId);
+  selectedStoryRef.current = selectedStoryId;
+  const rightViewRef = useRef(rightView);
+  rightViewRef.current = rightView;
   const playingRef = useRef(playing);
   playingRef.current = playing;
   const cruiseRef = useRef(cruising);
@@ -147,10 +177,14 @@ export default function App() {
 
   const togglePlay = useCallback(() => {
     const willPlay = !playingRef.current;
-    if (willPlay && progressRef.current >= 1) setProgress(0);
+    if (willPlay) {
+      const start = mode === "tour" ? revealRef.current : timelineRef.current >= 1 ? 0 : timelineRef.current;
+      setRevealT(start);
+      setTimelineT(start);
+    }
     activeSegRef.current = null;
     setPlaying(willPlay);
-  }, []);
+  }, [mode]);
 
   const exitCruise = useCallback(() => {
     setCruising(false);
@@ -163,7 +197,10 @@ export default function App() {
     if (cruiseRef.current) {
       exitCruise();
     } else {
-      if (progressRef.current >= 1) setProgress(0);
+      if (revealRef.current >= 1) {
+        setRevealT(0);
+        setTimelineT(0);
+      }
       activeSegRef.current = null;
       setCruising(true);
       setTerrain3d(true);
@@ -200,8 +237,15 @@ export default function App() {
       if (!playingRef.current) return;
       const dt = now - last;
       last = now;
-      const next = Math.min(1, progressRef.current + dt / 42000);
-      setProgress(next);
+      const next = Math.min(1, revealRef.current + dt / 42000);
+      setRevealT(next);
+      setTimelineT(next);
+      const nextNode = nodeAtTimelineT(next);
+      if (selectedNodeRef.current !== nextNode.id || selectedStoryRef.current !== null || rightViewRef.current?.type !== "node") {
+        setSelectedNodeId(nextNode.id);
+        setSelectedStoryId(null);
+        setRightView({ type: "node", nodeId: nextNode.id });
+      }
       const seg = activeSegmentAt(next);
       if (seg !== activeSegRef.current) {
         activeSegRef.current = seg;
@@ -225,7 +269,8 @@ export default function App() {
   const applyTourStop = useCallback(
     (index: number) => {
       const stop = TOUR_STOPS[index];
-      setProgress(stop.revealT);
+      setRevealT(stop.revealT);
+      setTimelineT(stop.revealT);
       setShowEpilogue(stop.kind === "final");
       setSelectedNodeId(stop.nodeIds[0] ?? null);
       setBottomExpanded(false);
@@ -245,6 +290,7 @@ export default function App() {
       setPlaying(false);
       setFocusMode(false);
       setSelectedStoryId(null);
+      if (m !== "tour") setRevealT(1);
       if (m === "tour") {
         setTourIndex(0);
         setRightView(null);
@@ -252,6 +298,7 @@ export default function App() {
       } else if (m === "explore") {
         setShowEpilogue(false);
         setRightView(null);
+        setRevealT(1);
         fly({ bounds: ROUTE_BOUNDS, duration: 2000 });
       } else {
         setRightView({ type: "sources" });
@@ -268,8 +315,10 @@ export default function App() {
       setPlaying(false);
       setSelectedNodeId(id);
       setSelectedStoryId(null);
+      setShowEpilogue(false);
       setRightView({ type: "node", nodeId: id });
-      setProgress((t) => Math.max(t, NODE_FRACTIONS[id]));
+      setRevealT(1);
+      setTimelineT(NODE_FRACTIONS[id]);
       flyToNode(node);
     },
     [flyToNode]
@@ -283,6 +332,8 @@ export default function App() {
       setPlaying(false);
       setSelectedStoryId(id);
       setSelectedNodeId(story.nodeId);
+      setRevealT(1);
+      setTimelineT(NODE_FRACTIONS[story.nodeId]);
       setRightView({ type: "story", storyId: id });
       flyToStory(story);
     },
@@ -358,7 +409,8 @@ export default function App() {
         tourIndex,
         nodeId: selectedNodeId ?? undefined,
         storyId: selectedStoryId ?? undefined,
-        progress,
+        timelineT,
+        revealT: mode === "explore" ? undefined : revealT,
       });
       if (hash !== window.location.hash) {
         lastHashRef.current = hash;
@@ -366,7 +418,7 @@ export default function App() {
       }
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [mode, tourIndex, selectedNodeId, selectedStoryId, progress]);
+  }, [mode, tourIndex, selectedNodeId, selectedStoryId, timelineT, revealT]);
 
   // 外部 hash 变化（浏览器前进/后退、手动编辑）→ 应用状态
   useEffect(() => {
@@ -381,10 +433,13 @@ export default function App() {
         setRightView(params.mode === "sources" ? { type: "sources" } : null);
       }
       if (params.mode) setMode(params.mode);
-      if (typeof params.progress === "number") setProgress(params.progress);
+      if (typeof params.timelineT === "number") setTimelineT(params.timelineT);
+      if (typeof params.revealT === "number") setRevealT(params.revealT);
       if (params.mode === "tour") {
         setTourIndex(params.tourIndex ?? 0);
         applyTourStop(params.tourIndex ?? 0);
+      } else if (params.mode === "explore" || !params.mode) {
+        setRevealT(1);
       }
     };
     window.addEventListener("hashchange", onHashChange);
@@ -392,7 +447,7 @@ export default function App() {
   }, [selectStory, selectNode, applyTourStop]);
 
   // 旁白语音（浏览器 TTS）：进入新段时朗读，暂停/关闭即停
-  const activeSeg = activeSegmentAt(progress);
+  const activeSeg = activeSegmentAt(revealT);
   const narrationLine = narrationFor(activeSeg);
   useEffect(() => {
     if (typeof speechSynthesis === "undefined") return;
@@ -424,8 +479,16 @@ export default function App() {
       : "";
 
   const onScrub = (t: number) => {
+    const next = Math.max(0, Math.min(1, t));
+    const nextNode = nodeAtTimelineT(next);
     setPlaying(false);
-    setProgress(t);
+    setTimelineT(next);
+    if (mode === "explore") setRevealT(1);
+    if (selectedNodeRef.current !== nextNode.id || selectedStoryRef.current !== null || rightViewRef.current?.type !== "node") {
+      setSelectedStoryId(null);
+      setSelectedNodeId(nextNode.id);
+      setRightView({ type: "node", nodeId: nextNode.id });
+    }
   };
 
   return (
@@ -441,7 +504,7 @@ export default function App() {
       }
     >
       <MapCanvas
-        progress={progress}
+        progress={revealT}
         selectedNodeId={selectedNodeId}
         selectedStoryId={selectedStoryId}
         layers={mapLayers}
@@ -504,7 +567,7 @@ export default function App() {
       {!focusMode && mode !== "sources" && (
         <>
           <LeftTimeline
-            progress={progress}
+            timelineT={timelineT}
             selectedNodeId={selectedNodeId}
             collapsed={leftCollapsed || mode === "tour"}
             mobileOpen={mobileTimelineOpen}
@@ -550,7 +613,7 @@ export default function App() {
 
       {!focusMode && mode !== "sources" && (
         <BottomPanel
-          progress={progress}
+          timelineT={timelineT}
           selectedNodeId={selectedNodeId}
           expanded={bottomExpanded}
           onToggle={() => setBottomExpanded((v) => !v)}
