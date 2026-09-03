@@ -500,19 +500,22 @@ export default function App() {
       ? selectedNode.displayDateLabel
       : "";
 
-  const onScrub = (t: number) => {
-    if (mode === "tour") return;
-    const next = Math.max(0, Math.min(1, t));
-    const nextNode = nodeAtTimelineT(next);
-    setPlaying(false);
-    setTimelineT(next);
-    setRevealT(1);
-    if (selectedNodeRef.current !== nextNode.id || selectedStoryRef.current !== null || rightViewRef.current?.type !== "node") {
-      setSelectedStoryId(null);
-      setSelectedNodeId(nextNode.id);
-      setRightView({ type: "node", nodeId: nextNode.id });
-    }
-  };
+  const onTimelineChange = useCallback(
+    (t: number) => {
+      if (mode === "tour") return;
+      const next = Math.max(0, Math.min(1, t));
+      const nextNode = nodeAtTimelineT(next);
+      setPlaying(false);
+      setShowEpilogue(false);
+      setTimelineT(next);
+      if (selectedNodeRef.current !== nextNode.id || selectedStoryRef.current !== null || rightViewRef.current?.type !== "node") {
+        setSelectedStoryId(null);
+        setSelectedNodeId(nextNode.id);
+        setRightView({ type: "node", nodeId: nextNode.id });
+      }
+    },
+    [mode]
+  );
 
   return (
     <div
@@ -642,7 +645,7 @@ export default function App() {
           selectedNodeId={selectedNodeId}
           expanded={bottomExpanded}
           onToggle={() => setBottomExpanded((v) => !v)}
-          onScrub={onScrub}
+          onTimelineChange={onTimelineChange}
           playing={playing}
           onPlayToggle={togglePlay}
           voiceOn={voiceOn}

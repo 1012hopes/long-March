@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { nodes } from "../data/nodes";
 import { segments } from "../data/sources";
 import { activeSegmentAt, tToDateLabel, NODE_FRACTIONS } from "../data/time";
@@ -25,7 +25,7 @@ type Props = {
   selectedNodeId: string | null;
   expanded: boolean;
   onToggle: () => void;
-  onScrub: (t: number) => void;
+  onTimelineChange: (t: number) => void;
   playing: boolean;
   onPlayToggle: () => void;
   voiceOn: boolean;
@@ -47,8 +47,10 @@ const CERT_HINT = {
 } as const;
 
 export default function BottomPanel(p: Props) {
+  const [scrubActive, setScrubActive] = useState(false);
   const activeSeg = activeSegmentAt(p.timelineT);
   const segMeta = segments.find((s) => s.id === activeSeg)!;
+  const currentLabel = tToDateLabel(p.timelineT);
 
   const profileSegId = useMemo(() => {
     if (p.selectedNodeId) {
@@ -101,11 +103,14 @@ export default function BottomPanel(p: Props) {
 
       <div className="bottom-summary">
         <div className="bs-date">
-          <span className="bs-date-label mono">{tToDateLabel(p.timelineT)}</span>
+          <span className="bs-date-label mono">{currentLabel}</span>
           <button className="mini-btn" onClick={p.onPlayToggle}>
             {p.playing ? "暂停" : "▶"}
           </button>
           <div className="scrub-wrap">
+            <span className={`scrub-preview ${scrubActive ? "active" : ""}`} aria-hidden="true">
+              拖动中 · {currentLabel}
+            </span>
             <input
               className="time-scrubber"
               type="range"
@@ -114,8 +119,14 @@ export default function BottomPanel(p: Props) {
               step={0.001}
               value={p.timelineT}
               disabled={p.scrubbingLocked}
-              onChange={(e) => p.onScrub(parseFloat(e.target.value))}
+              onPointerDown={() => setScrubActive(true)}
+              onPointerUp={() => setScrubActive(false)}
+              onPointerCancel={() => setScrubActive(false)}
+              onFocus={() => setScrubActive(true)}
+              onBlur={() => setScrubActive(false)}
+              onChange={(e) => p.onTimelineChange(parseFloat(e.target.value))}
               aria-label="时间进度"
+              aria-valuetext={currentLabel}
             />
             <div className="scrub-ticks">
               {nodes.map((n) => {
@@ -129,7 +140,7 @@ export default function BottomPanel(p: Props) {
                     title={`${n.shortTitle}（${n.displayDateLabel}）`}
                     aria-label={`时间轴跳到节点：${n.shortTitle}`}
                     disabled={p.scrubbingLocked}
-                    onClick={() => p.onScrub(frac)}
+                    onClick={() => p.onTimelineChange(frac)}
                   />
                 );
               })}

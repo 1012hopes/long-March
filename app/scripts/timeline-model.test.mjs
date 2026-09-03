@@ -68,6 +68,9 @@ test("tour mode locks the bottom scrubber instead of desynchronizing the timelin
   assert.match(appText, /<BottomPanel[\s\S]{0,120}scrubbingLocked=\{mode === "tour"\}/);
   assert.match(bottomText, /disabled=\{p\.scrubbingLocked\}/);
   assert.match(bottomText, /scrubbingLocked/);
+  assert.match(bottomText, /aria-valuetext=\{currentLabel\}/);
+  assert.match(bottomText, /onTimelineChange/);
+  assert.ok(!bottomText.includes("onScrub"));
 });
 
 test("play restarts from zero when revealT is already at the end", async () => {
@@ -98,4 +101,18 @@ test("left rail renders a neutral track and current-time indicator instead of a 
   assert.match(cssText, /timeline-marker\.selected/);
   assert.match(cssText, /timeline-marker\.current/);
   assert.ok(!cssText.includes(".timeline-fill {"));
+});
+
+test("bottom scrubber provides a drag preview and 44px touch targets", async () => {
+  const bottomText = await readFile(new URL("../src/components/BottomPanel.tsx", import.meta.url), "utf8");
+  const cssText = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
+
+  assert.match(bottomText, /scrub-preview/);
+  assert.match(bottomText, /onPointerDown/);
+  assert.match(bottomText, /onPointerUp/);
+  assert.match(bottomText, /onPointerCancel/);
+  assert.match(bottomText, /onBlur/);
+  assert.ok(cssText.includes("min-height: 44px;"));
+  assert.ok(cssText.includes("min-width: 44px;"));
+  assert.ok(cssText.includes(".scrub-preview"));
 });
