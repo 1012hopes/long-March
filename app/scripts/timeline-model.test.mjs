@@ -83,7 +83,18 @@ test("left rail renders a neutral track and current-time indicator instead of a 
   const cssText = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
 
   assert.ok(!leftText.includes("timeline-fill"));
+  assert.match(leftText, /timelineMarkers\(\)/);
+  assert.match(leftText, /onTimelineChange/);
+  assert.match(leftText, /style=\{\{ top: `\$\{marker\.t \* 100\}%` \}\}/);
+  assert.match(leftText, /1934年10月/);
+  assert.match(leftText, /1935年1月/);
+  assert.match(leftText, /1935年5月/);
+  assert.match(leftText, /1935年10月/);
   assert.match(leftText, /timeline-current/);
   assert.match(cssText, /timeline-current/);
+  assert.match(cssText, /timeline-scale/);
+  assert.match(cssText, /timeline-scale-label/);
+  assert.match(cssText, /timeline-marker\.selected/);
+  assert.match(cssText, /timeline-marker\.current/);
   assert.ok(!cssText.includes(".timeline-fill {"));
 });

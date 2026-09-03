@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef } from "react";
 import { nodes } from "../data/nodes";
-import { NODE_FRACTIONS, isoToDateLabel, NODE_DATES } from "../data/time";
+import {
+  NODE_DATES,
+  dateToT,
+  isoToDateLabel,
+  timelineMarkers,
+  type TimelineMarker,
+} from "../data/time";
 
 type Props = {
   timelineT: number;
@@ -9,6 +15,7 @@ type Props = {
   mobileOpen?: boolean;
   onToggleCollapse: () => void;
   onSelect: (id: string) => void;
+  onTimelineChange: (t: number) => void;
 };
 
 const PRECISION_TEXT = {
@@ -17,23 +24,35 @@ const PRECISION_TEXT = {
   disputed: "多候选",
 } as const;
 
+const SCALE_TICKS = [
+  { label: "1934年10月", t: dateToT("1934-10-10") },
+  { label: "1935年1月", t: dateToT("1935-01-01") },
+  { label: "1935年5月", t: dateToT("1935-05-01") },
+  { label: "1935年10月", t: dateToT("1935-10-01") },
+] as const;
+
 const prefersReducedMotion = () =>
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
 export default function LeftTimeline(p: Props) {
   const listRef = useRef<HTMLOListElement>(null);
-  // 首次渲染不抢占阅读位置（progress 常为 1，会把列表直接拽到末尾）；
-  // 之后的进度变化（拖时间轴、播放、翻页）都跟随。
+  // 首次渲染不抢占阅读位置；之后跟随选中节点或当前时间定位。
   const mountedRef = useRef(false);
+  const markers = useMemo(() => timelineMarkers(), []);
 
-  // 进度驱动的“当前节点”：最后一条已到达的节点。
+  // 当前时间驱动的“节点脊柱”位置，按真实日期而非等间距列表。
   const activeNodeId = useMemo(() => {
-    let current = nodes[0].id;
-    for (const n of nodes) {
-      if (p.timelineT >= NODE_FRACTIONS[n.id] - 1e-6) current = n.id;
+    let current = markers[0]?.id ?? nodes[0].id;
+    for (const marker of markers) {
+      if (p.timelineT >= marker.t - 1e-6) current = marker.id;
     }
     return current;
-  }, [p.timelineT]);
+  }, [markers, p.timelineT]);
+
+  const activateMarker = (marker: TimelineMarker) => {
+    p.onTimelineChange(marker.t);
+    p.onSelect(marker.id);
+  };
 
   useEffect(() => {
     if (p.collapsed) return;
@@ -44,7 +63,7 @@ export default function LeftTimeline(p: Props) {
     const target = p.selectedNodeId ?? activeNodeId;
     const el = listRef.current?.querySelector<HTMLLIElement>(`[data-node="${target}"]`);
     el?.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
-  }, [p.selectedNodeId, activeNodeId, p.collapsed]);
+  }, [activeNodeId, p.collapsed, p.selectedNodeId]);
 
   return (
     <aside className={`left-panel ${p.collapsed ? "rail" : "expanded"} ${p.mobileOpen ? "mobile-open" : ""}`}>
@@ -64,36 +83,73 @@ export default function LeftTimeline(p: Props) {
               收起
             </button>
           </div>
-          <div className="timeline-rail" aria-hidden="true">
-            <div className="timeline-track" />
-            <div className="timeline-current" style={{ top: `${p.timelineT * 100}%` }} />
-          </div>
-          <ol className="timeline-list" ref={listRef}>
-            {nodes.map((n) => {
-              const frac = NODE_FRACTIONS[n.id];
-              const selected = p.selectedNodeId === n.id;
-              const current = n.id === activeNodeId;
-              return (
-                <li
-                  key={n.id}
-                  data-node={n.id}
-                  aria-current={current ? "step" : undefined}
-                  className={`${selected ? "selected" : ""} ${current ? "current" : ""}`.trim()}
-                >
-                  <button className="timeline-item" onClick={() => p.onSelect(n.id)}>
-                    <span className="tl-dot" aria-hidden="true" />
-                    <span className="tl-body">
-                      <span className="tl-meta">
-                        <span className="tl-date">{n.displayDateLabel}</span>
-                        <span className="tl-precision">{PRECISION_TEXT[n.precision]}</span>
+
+          <div className="timeline-layout">
+            <div className="timeline-side" aria-hidden="true">
+              <div className="timeline-scale">
+                {SCALE_TICKS.map((tick, index) => (
+                  <div
+                    key={tick.label}
+                    className={`timeline-scale-item ${index % 2 === 0 ? "left" : "right"}`}
+                    style={{ top: `${tick.t * 100}%` }}
+                  >
+                    <span className="timeline-scale-label">{tick.label}</span>
+                    <span className="timeline-scale-rule" />
+                  </div>
+                ))}
+              </div>
+              <div className="timeline-rail">
+                <div className="timeline-track" />
+                <div className="timeline-current" style={{ top: `${p.timelineT * 100}%` }} />
+              </div>
+              <div className="timeline-marker-layer">
+                {markers.map((marker) => {
+                  const selected = p.selectedNodeId === marker.id;
+                  const current = marker.id === activeNodeId;
+                  return (
+                    <button
+                      key={marker.id}
+                      className={`timeline-marker ${selected ? "selected" : ""} ${current ? "current" : ""}`.trim()}
+                      style={{ top: `${marker.t * 100}%` }}
+                      title={`${marker.title}（${marker.dateLabel}）`}
+                      aria-label={`跳转到节点：${marker.title}，${marker.dateLabel}`}
+                      aria-current={current ? "step" : undefined}
+                      onClick={() => activateMarker(marker)}
+                    >
+                      <span className="timeline-marker-dot" aria-hidden="true" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <ol className="timeline-list" ref={listRef}>
+              {nodes.map((node) => {
+                const marker = markers.find((item) => item.id === node.id)!;
+                const selected = p.selectedNodeId === node.id;
+                const current = node.id === activeNodeId;
+                return (
+                  <li
+                    key={node.id}
+                    data-node={node.id}
+                    aria-current={current ? "step" : undefined}
+                    className={`${selected ? "selected" : ""} ${current ? "current" : ""}`.trim()}
+                  >
+                    <button className="timeline-item" onClick={() => activateMarker(marker)}>
+                      <span className="tl-body">
+                        <span className="tl-meta">
+                          <span className="tl-date">{node.displayDateLabel}</span>
+                          <span className="tl-precision">{PRECISION_TEXT[node.precision]}</span>
+                        </span>
+                        <span className="tl-title">{node.shortTitle}</span>
                       </span>
-                      <span className="tl-title">{n.shortTitle}</span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+
           <div className="left-footer">
             <span className="fine">中央红军主线 · {isoToDateLabel(NODE_DATES["node-09"][1])}政治局扩大会议收束</span>
           </div>

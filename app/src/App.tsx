@@ -595,6 +595,7 @@ export default function App() {
             collapsed={leftCollapsed || mode === "tour"}
             mobileOpen={mobileTimelineOpen}
             onToggleCollapse={() => setLeftCollapsed((v) => !v)}
+            onTimelineChange={setTimelineT}
             onSelect={(id) => {
               selectNode(id);
               setMobileTimelineOpen(false);
