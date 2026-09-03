@@ -128,14 +128,15 @@ test("motion stays event-driven and honors reduced-motion camera fallbacks", asy
   assert.match(appText, /setCameraReq\(/);
 });
 
-test("left timeline suppresses the restored selected-node scroll on first paint only", async () => {
+test("app scopes the restored selected-node scroll suppression to the initial page load", async () => {
+  const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
   const leftText = await readFile(new URL("../src/components/LeftTimeline.tsx", import.meta.url), "utf8");
-  const guardIndex = leftText.indexOf("if (suppressInitialSelectedScrollRef.current) return;");
-  const resetIndex = leftText.indexOf("suppressInitialSelectedScrollRef.current = false;");
 
-  assert.ok(leftText.includes("const suppressInitialSelectedScrollRef = useRef(true);"));
-  assert.ok(guardIndex >= 0, "left timeline should guard the first selected-node scroll");
-  assert.ok(resetIndex > guardIndex, "mount reset must run after the initial scroll guard effect");
+  assert.ok(appText.includes("const suppressInitialSelectedScrollRef = useRef(true);"));
+  assert.match(appText, /suppressInitialSelectedScroll=\{suppressInitialSelectedScrollRef\.current\}/);
+  assert.match(appText, /suppressInitialSelectedScrollRef\.current = false;/);
+  assert.ok(!leftText.includes("const suppressInitialSelectedScrollRef = useRef(true);"));
+  assert.match(leftText, /suppressInitialSelectedScroll/);
 });
 
 test("left timeline markers use 44px hit areas while keeping a compact visible dot", async () => {

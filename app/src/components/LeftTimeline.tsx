@@ -13,6 +13,7 @@ type Props = {
   selectedNodeId: string | null;
   collapsed: boolean;
   mobileOpen?: boolean;
+  suppressInitialSelectedScroll?: boolean;
   onToggleCollapse: () => void;
   onSelect: (id: string) => void;
   onTimelineChange: (t: number) => void;
@@ -36,8 +37,6 @@ const prefersReducedMotion = () =>
 
 export default function LeftTimeline(p: Props) {
   const listRef = useRef<HTMLOListElement>(null);
-  // 首次提交若带着 hash 恢复的选中节点，不抢占阅读位置；后续显式选中或重开面板仍跟随。
-  const suppressInitialSelectedScrollRef = useRef(true);
   const markers = useMemo(() => timelineMarkers(), []);
 
   // 当前时间驱动的“节点脊柱”位置，按真实日期而非等间距列表。
@@ -57,14 +56,10 @@ export default function LeftTimeline(p: Props) {
   useEffect(() => {
     if (p.collapsed) return;
     if (!p.selectedNodeId) return;
-    if (suppressInitialSelectedScrollRef.current) return;
+    if (p.suppressInitialSelectedScroll) return;
     const el = listRef.current?.querySelector<HTMLLIElement>(`[data-node="${p.selectedNodeId}"]`);
     el?.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
-  }, [p.collapsed, p.mobileOpen, p.selectedNodeId]);
-
-  useEffect(() => {
-    suppressInitialSelectedScrollRef.current = false;
-  }, []);
+  }, [p.collapsed, p.mobileOpen, p.selectedNodeId, p.suppressInitialSelectedScroll]);
 
   return (
     <aside className={`left-panel ${p.collapsed ? "rail" : "expanded"} ${p.mobileOpen ? "mobile-open" : ""}`}>

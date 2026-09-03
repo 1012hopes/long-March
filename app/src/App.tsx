@@ -156,6 +156,7 @@ export default function App() {
   const [ambientOn, setAmbientOn] = useState(false);
   const [terrainOffline, setTerrainOffline] = useState(false);
 
+  const suppressInitialSelectedScrollRef = useRef(true);
   const seqRef = useRef(0);
   const timelineRef = useRef(timelineT);
   timelineRef.current = timelineT;
@@ -427,6 +428,10 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    suppressInitialSelectedScrollRef.current = false;
+  }, []);
+
   // 状态 → hash（防抖，避免播放时高频改写地址）
   const lastHashRef = useRef("");
   useEffect(() => {
@@ -601,6 +606,7 @@ export default function App() {
             selectedNodeId={selectedNodeId}
             collapsed={leftCollapsed || mode === "tour"}
             mobileOpen={mobileTimelineOpen}
+            suppressInitialSelectedScroll={suppressInitialSelectedScrollRef.current}
             onToggleCollapse={() => setLeftCollapsed((v) => !v)}
             onTimelineChange={onTimelineChange}
             onSelect={(id) => {
