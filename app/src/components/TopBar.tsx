@@ -3,13 +3,14 @@ export type Mode = "tour" | "explore" | "sources";
 type Props = {
   mode: Mode;
   onMode: (m: Mode) => void;
-  playing: boolean;
-  onPlayToggle: () => void;
   terrain3d: boolean;
   onTerrain3d: () => void;
+  cruising: boolean;
+  onCruiseToggle: () => void;
   focusMode: boolean;
   onFocusToggle: () => void;
   onInfo: () => void;
+  onOpenCatalog: () => void;
 };
 
 export default function TopBar(p: Props) {
@@ -23,11 +24,6 @@ export default function TopBar(p: Props) {
             <span className="brand-secondary">一条路的来处</span>
           </h1>
           <span className="brand-sub">沿真实地理、时间与史料进入历史现场</span>
-        </div>
-        <div className="brand-period" aria-label="中央红军长征主线时间">
-          <span>1934.10</span>
-          <i aria-hidden="true" />
-          <span>1935.10</span>
         </div>
         </div>
       </div>
@@ -45,22 +41,26 @@ export default function TopBar(p: Props) {
         </button>
       </nav>
 
+      <span className="topbar-sep" aria-hidden="true" />
+
       <div className="topbar-actions">
-        {p.mode !== "sources" && (
-          <button
-            className={`tool-btn ${p.playing ? "on" : ""}`}
-            onClick={p.onPlayToggle}
-            title="沿时间顺序播放路线"
-          >
-            {p.playing ? "暂停" : "▶ 播放"}
-          </button>
-        )}
+        <button className="tool-btn" onClick={p.onOpenCatalog} title="按时间线浏览全部沿途故事">
+          故事目录
+        </button>
         <button className={`tool-btn ${p.terrain3d ? "on" : ""}`} onClick={p.onTerrain3d} title="3D 地形">
           3D 地形
+        </button>
+        <button
+          className={`tool-btn ${p.cruising ? "on" : ""}`}
+          onClick={p.onCruiseToggle}
+          title="3D 沿线巡航：镜头贴着路线低空飞行，按 Esc 退出"
+        >
+          {p.cruising ? "退出巡航" : "巡航"}
         </button>
         <button className="tool-btn" onClick={p.onFocusToggle} title="收起全部面板">
           {p.focusMode ? "退出专注" : "专注地图"}
         </button>
+        <span className="topbar-sep" aria-hidden="true" />
         <button className="tool-btn" onClick={p.onInfo} title="关于本演示">
           说明
         </button>

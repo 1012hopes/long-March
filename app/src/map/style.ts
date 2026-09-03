@@ -13,8 +13,8 @@ export const C = {
   routeRed: "#A6322B",
   routeRedSoft: "#D8A39D",
   evidenceBlue: "#315E78",
-  interpOchre: "#9A6B2F",
-  reconOrange: "#B85E32",
+  interpOchre: "#8F6228",
+  reconOrange: "#A5532C",
   disputedViolet: "#765B78",
 };
 

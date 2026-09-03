@@ -1,3 +1,5 @@
+import { stories } from "../data/stories";
+
 type Props = { onClose: () => void };
 
 export default function InfoSheet(p: Props) {
@@ -37,11 +39,16 @@ export default function InfoSheet(p: Props) {
             </ul>
           </section>
           <section>
-            <h3>操作</h3>
+            <h3>操作与键盘快捷键</h3>
             <ul>
-              <li>拖动底部时间尺或点击 ▶ 播放，路线沿时间顺序显影；</li>
-              <li>点击节点标记或左侧列表打开节点学习面板；Esc 逐层关闭面板；</li>
-              <li>「专注地图」一次收起全部面板；「3D 地形」切换三维视角。</li>
+              <li>拖动底部时间尺（或点击尺上的节点刻度）查看任意时刻，点击 ▶ 播放；</li>
+              <li>
+                <kbd>空格</kbd> 播放 / 暂停 · <kbd>←</kbd>/<kbd>→</kbd> 在站点间跳转 ·{" "}
+                <kbd>Esc</kbd> 逐层关闭面板 · <kbd>?</kbd> 打开本说明；
+              </li>
+              <li>地图节点标记可用 <kbd>Tab</kbd> 聚焦，<kbd>Enter</kbd> 打开；</li>
+              <li>「巡航」沿路线 3D 低空飞行，「故事目录」按时间线浏览全部 {stories.length} 个故事；</li>
+              <li>「专注地图」一次收起全部面板；地址栏链接会记住当前节点、故事与进度，可直接分享。</li>
             </ul>
           </section>
         </div>

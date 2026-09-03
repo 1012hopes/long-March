@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from "react";
 import { nodes, type NodeUnit, type ContentTag } from "../data/nodes";
 import { sources, sourcesByNode } from "../data/sources";
 import { stories, type StoryPoint } from "../data/stories";
+import { getStoryMarkerPresentation } from "../map/markerPresentation";
 import { getRightPanelPresentation } from "../layout/rightPanelPresentation";
 
 export type RightView =
@@ -22,7 +23,7 @@ const STORY_KIND_LABEL: Record<StoryPoint["kind"], string> = {
   march: "行军",
   battle: "战斗",
   crossing: "渡河",
-  people: "群众",
+  people: "人物",
   terrain: "地形",
   meeting: "会议",
 };
@@ -37,6 +38,7 @@ type Props = {
   onDepth: (d: "concise" | "deep") => void;
   onClose: () => void;
   onSelectNode: (id: string) => void;
+  onSelectStory: (id: string) => void;
   onOpenSources: (nodeId?: string) => void;
   onPrevNext: (dir: -1 | 1) => void;
   tourChrome?: { index: number; total: number; stopTitle: string } | null;
@@ -44,6 +46,7 @@ type Props = {
 
 function NodeCard({ node, p }: { node: NodeUnit; p: Props }) {
   const nodeSources = sourcesByNode(node.id);
+  const nodeStories = stories.filter((story) => story.nodeId === node.id);
   return (
     <div className="node-card">
       <div className="node-head">
@@ -109,6 +112,27 @@ function NodeCard({ node, p }: { node: NodeUnit; p: Props }) {
         {node.watch}
       </div>
 
+      {nodeStories.length > 0 && (
+        <section className="node-stories">
+          <h3>本节点沿途故事</h3>
+          <div className="node-story-list">
+            {nodeStories.map((story) => {
+              const presentation = getStoryMarkerPresentation(story.shortTitle, story.kind);
+              return (
+                <button key={story.id} className="node-story-link" onClick={() => p.onSelectStory(story.id)}>
+                  <span className="node-story-glyph" aria-hidden="true">{presentation.glyph}</span>
+                  <span className="node-story-body">
+                    <strong>{story.title}</strong>
+                    <small>{story.dateLabel} · {story.place}</small>
+                  </span>
+                  <span aria-hidden="true">→</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <div className="node-footer">
         <button className="ghost-btn" onClick={() => p.onOpenSources(node.id)}>
           史料与出处 · {nodeSources.length} 条
@@ -146,6 +170,13 @@ function StoryCard({ story, p }: { story: StoryPoint; p: Props }) {
           </span>
         </div>
       </header>
+
+      {story.image && (
+        <figure className="story-figure">
+          <img src={story.image.src} alt={story.image.alt} loading="lazy" />
+          <figcaption>{story.image.credit}</figcaption>
+        </figure>
+      )}
 
       <section className="story-summary">
         <h3>这里发生了什么</h3>

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { nodes } from "../data/nodes";
 import { segments } from "../data/sources";
-import { activeSegmentAt, tToDateLabel, SEG_FRACTIONS } from "../data/time";
+import { activeSegmentAt, tToDateLabel, NODE_FRACTIONS } from "../data/time";
 import { NODE_DATES } from "../data/time";
 import profilesData from "../data/elevation-profiles.json";
 
@@ -27,12 +27,22 @@ type Props = {
   onScrub: (t: number) => void;
   playing: boolean;
   onPlayToggle: () => void;
+  voiceOn: boolean;
+  onVoiceToggle: () => void;
+  ambientOn: boolean;
+  onAmbientToggle: () => void;
 };
 
 const CERT_LABEL = {
   confirmed: "确定 · 史料明确",
   approximate: "约略 · 走廊示意",
   disputed: "争议 · 多候选并列",
+} as const;
+
+const CERT_HINT = {
+  confirmed: "当前路段的走向有明确史料支撑，按史料绘制。",
+  approximate: "当前路段的史料只给出大致范围，路线按走廊示意。",
+  disputed: "当前路段存在多条候选走向，图中以虚线并列呈现，不作唯一结论。",
 } as const;
 
 export default function BottomPanel(p: Props) {
@@ -47,7 +57,13 @@ export default function BottomPanel(p: Props) {
     return activeSeg;
   }, [p.selectedNodeId, activeSeg]);
 
-  const prof = profiles.profiles[profileSegId] ?? null;
+  // 剖面台账以候选线为键（seg-04a/seg-08b…）；段级 ID 依次回退到主、次候选线。
+  const profKey = useMemo(() => {
+    const candidates = [profileSegId, `${profileSegId}a`, `${profileSegId}b`];
+    return candidates.find((key) => profiles.profiles[key]) ?? null;
+  }, [profileSegId]);
+  const prof = profKey ? profiles.profiles[profKey] : null;
+  const profFromCandidate = profKey !== null && profKey !== profileSegId;
   const fromNode = nodes.find((n) => n.id === segMeta.fromNodeId)!;
   const toNode = nodes.find((n) => n.id === segMeta.toNodeId)!;
 
@@ -88,19 +104,43 @@ export default function BottomPanel(p: Props) {
           <button className="mini-btn" onClick={p.onPlayToggle}>
             {p.playing ? "暂停" : "▶"}
           </button>
-          <input
-            className="time-scrubber"
-            type="range"
-            min={0}
-            max={1}
-            step={0.001}
-            value={p.progress}
-            onChange={(e) => p.onScrub(parseFloat(e.target.value))}
-            aria-label="时间进度"
-          />
+          <div className="scrub-wrap">
+            <input
+              className="time-scrubber"
+              type="range"
+              min={0}
+              max={1}
+              step={0.001}
+              value={p.progress}
+              onChange={(e) => p.onScrub(parseFloat(e.target.value))}
+              aria-label="时间进度"
+            />
+            <div className="scrub-ticks">
+              {nodes.map((n) => {
+                const frac = NODE_FRACTIONS[n.id];
+                const reached = p.progress >= frac - 1e-6;
+                return (
+                  <button
+                    key={n.id}
+                    className={`scrub-tick ${reached ? "reached" : ""}`}
+                    style={{ left: `${frac * 100}%` }}
+                    title={`${n.shortTitle}（${n.displayDateLabel}）`}
+                    aria-label={`时间轴跳到节点：${n.shortTitle}`}
+                    onClick={() => p.onScrub(frac)}
+                  />
+                );
+              })}
+            </div>
+          </div>
         </div>
         <div className="bs-seg">
-          <span className={`cert-chip cert-${segMeta.certainty}`}>{CERT_LABEL[segMeta.certainty]}</span>
+          <span
+            className={`cert-chip cert-${segMeta.certainty}`}
+            title={CERT_HINT[segMeta.certainty]}
+            aria-label={`当前路段精度：${CERT_LABEL[segMeta.certainty]}。${CERT_HINT[segMeta.certainty]}`}
+          >
+            {CERT_LABEL[segMeta.certainty]}
+          </span>
           <span className="bs-seg-range">
             {fromNode.shortTitle} → {toNode.shortTitle}
           </span>
@@ -111,8 +151,24 @@ export default function BottomPanel(p: Props) {
               海拔 {prof.minElevMeters}-{prof.maxElevMeters} m · 累计爬升 ≈{prof.ascentMeters} m
             </span>
           ) : (
-            <span className="fine">剖面数据生成中</span>
+            <span className="fine">该段暂无剖面数据</span>
           )}
+          <button
+            className={`mini-btn toggle-btn ${p.voiceOn ? "on" : ""}`}
+            onClick={p.onVoiceToggle}
+            aria-pressed={p.voiceOn}
+            title="播放时朗读旁白（使用浏览器自带语音，默认关闭）"
+          >
+            ♪ 旁白
+          </button>
+          <button
+            className={`mini-btn toggle-btn ${p.ambientOn ? "on" : ""}`}
+            onClick={p.onAmbientToggle}
+            aria-pressed={p.ambientOn}
+            title="风声环境音（浏览器实时合成，无素材，默认关闭）"
+          >
+            ≋ 环境声
+          </button>
           <button className="mini-btn" onClick={p.onToggle} aria-label="展开海拔剖面">
             {p.expanded ? "收起 ▾" : "剖面 ▴"}
           </button>
@@ -140,12 +196,13 @@ export default function BottomPanel(p: Props) {
                 </span>
                 <span className="fine">
                   海拔剖面依据开放 DEM（{prof.demSource.split("(")[0].trim()}）派生，属可视化还原，不证明历史路线。
+                  {profFromCandidate ? "按该段主候选线计算。" : ""}
                 </span>
               </div>
             </>
           ) : (
             <div className="profile-meta">
-              <span className="fine">海拔剖面数据尚未生成：在 app 目录运行 npm run terrain。</span>
+              <span className="fine">该段暂无剖面数据：在 app 目录运行 npm run terrain 生成。</span>
             </div>
           )}
         </div>

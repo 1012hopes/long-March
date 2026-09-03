@@ -88,7 +88,9 @@ test("editorial title system replaces the flat toolbar heading", async () => {
 
   assert.ok(topBarText.includes("brand-primary"));
   assert.ok(topBarText.includes("brand-secondary"));
-  assert.ok(topBarText.includes("brand-period"));
+  // 日期范围只在左栏面板出现一次；顶栏以分组线区分模式 / 视图开关 / 帮助。
+  assert.ok(!topBarText.includes("brand-period"));
+  assert.ok(topBarText.includes("topbar-sep"));
   assert.ok(!topBarText.includes("brand-seal"));
   assert.ok(!topBarText.includes("原型演示"));
   assert.ok(rightPanelText.includes("panel-heading-main"));

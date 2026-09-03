@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { stories } from "../data/stories";
 
 type Props = {
   showEpilogue: boolean;
@@ -39,14 +40,14 @@ export default function Legend(p: Props) {
           </div>
           <label className="legend-check">
             <input type="checkbox" checked={p.showStories} onChange={(e) => p.onStories(e.target.checked)} />
-            <span>显示 14 个沿途故事与人物事件</span>
+            <span>显示 {stories.length} 个沿途故事与人物事件</span>
           </label>
           <label className="legend-check">
             <input type="checkbox" checked={p.showEpilogue} onChange={(e) => p.onEpilogue(e.target.checked)} />
             <span>显示 1936 三大主力会师尾声</span>
           </label>
           <button className="mini-btn" onClick={p.onResetView}>
-            回到全景
+            回到路线全景
           </button>
           <p className="legend-fine">图例说明精度，不只靠颜色区分 · 路线为示意还原，不是逐日轨迹</p>
         </div>

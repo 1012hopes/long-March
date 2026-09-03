@@ -8,6 +8,12 @@ export type StoryPerson = {
   role: string;
 };
 
+export type StoryImage = {
+  src: string;
+  alt: string;
+  credit: string;
+};
+
 export type StoryPoint = {
   id: string;
   nodeId: string;
@@ -22,6 +28,8 @@ export type StoryPoint = {
   people: StoryPerson[];
   sourceIds: string[];
   question: string;
+  // 文物/历史照片槽位：仅在取得书面授权后填充（见 research/rights-register.csv）
+  image?: StoryImage;
 };
 
 export const stories = storyData as StoryPoint[];

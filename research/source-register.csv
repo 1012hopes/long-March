@@ -26,3 +26,27 @@ map-001,all,天地图国家地理信息公共服务平台,自然资源部相关�
 map-002,all,标准地图服务系统,自然资源部,official-map,,http://bzdt.ch.mnr.gov.cn/,2026-09-01,high,permission-needed,静态地图与审图参考,公开使用需确认审图号
 dem-001,all,SRTMGL1 V003,NASA,dem,,https://www.earthdata.nasa.gov/data/catalog/lpcloud-srtmgl1-003,2026-09-01,high,cleared,开放DEM地形派生,按政策署名
 dem-002,all,Copernicus DEM,Copernicus Data Space,dem,,https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM,2026-09-01,high,permission-needed,开放DEM候选,遵守CCM许可与来源声明
+hist-022,node-02,一百堂党史课｜半条被子一条心,共产党员网,official-web,2021-04-09,https://www.12371.cn/2021/04/09/VIDE1617965041460338.shtml,2026-09-03,high,citation-only,1934年11月3位女红军借宿沙洲村徐解秀家并留下半条被子,借宿天数各记述略有出入，展示时不写具体天数
+hist-023,node-02,“半条被子”的故事在继续,新华网,official-web,2025-11-04,http://www.news.cn/politics/20251104/2b8289f7b3ba49c49ee43b90bc83eaff/c.html,2026-09-03,high,citation-only,罗开富1984年重走长征路报道与徐解秀后人的守护,
+hist-024,node-02,陈树湘：“为苏维埃新中国流尽最后一滴血”,共产党员网,official-web,2018-09-10,https://www.12371.cn/2018/09/10/ARTI1536542200844931.shtml,2026-09-03,high,citation-only,红34师师长陈树湘湘江殿后、被俘后断肠牺牲（时年29岁）,
+hist-025,node-02,陈树湘：“为苏维埃新中国流尽最后一滴血”,新华网,official-web,2018-09-09,https://www.xinhuanet.com/politics/2018-09/09/c_1123401045.htm,2026-09-03,high,citation-only,陈树湘率部担任全军总后卫掩护主力渡江,与hist-024交叉核验
+hist-026,node-03,老山界高山俯首 通道县红军转兵,人民网党史,official-web,2016-08-18,http://dangshi.people.com.cn/n1/2016/0818/c85037-28646476.html,2026-09-03,high,citation-only,红军翻越越城岭（老山界）的行军记述,
+hist-027,node-03,没有红军逾越不了的山河,新华网,official-web,2019-07-05,https://www.xinhuanet.com/politics/2019-07/05/c_1124716497.htm,2026-09-03,high,citation-only,老山界是中央红军长征以来遇到的第一座高山；陆定一《老山界》为亲历记述,
+hist-028,node-05,钟赤兵，单腿走完长征的开国将军,人民网党史,official-web,2016-09-22,http://dangshi.people.com.cn/n1/2016/0922/c85037-28731906.html,2026-09-03,high,citation-only,娄山关战斗负伤、三次截肢后独腿走完长征,
+hist-029,node-05,独腿战士钟赤兵拄双拐走完长征路,应急管理部网站,official-web,2016-10-22,https://www.mem.gov.cn/xw/ztzl/2018/cyzd/hslc/201610/t20161022_228344.shtml,2026-09-03,high,citation-only,钟赤兵娄山关负伤与独腿长征经过,与hist-028交叉核验
+hist-030,node-06,她是井冈山第一位女红军，为掩护伤员，身中17块弹片,共产党员网,official-web,2022-04-20,https://www.12371.cn/2022/04/20/ARTI1650438417395631.shtml,2026-09-03,high,citation-only,1935年4月盘县遭空袭，贺子珍扑在担架上掩护钟赤兵而负重伤,弹片数量各记载略有出入，展示用“十余处”表述
+hist-031,node-06,贺子珍在长征如何救红军伤员？,中国日报网,official-media,2016-10-16,http://china.chinadaily.com.cn/2016-10/16/content_27076510.htm,2026-09-03,high,citation-only,贺子珍掩护伤员的经过与时间地点,
+hist-032,node-06,小叶丹——彝海结盟谱写民族团结之歌,中国共产党新闻网,official-web,2022-07-29,http://cpc.people.com.cn/n1/2022/0729/c443712-32488716.html,2026-09-03,high,citation-only,1935年5月22日刘伯承与小叶丹彝海结盟,
+hist-033,node-06,彝海结盟后，掩护红军旗的5400天——鲜为人知的彝家护旗故事,新华网,official-web,2019-07-26,https://www.xinhuanet.com/politics/2019-07/26/c_1210216347.htm,2026-09-03,high,citation-only,“中国夷民红军沽鸡支队”队旗由小叶丹家人长期守护，现藏军事博物馆,
+hist-034,node-08,追记那个背着发电机走完长征路的于都人,于都县人民政府,official-web,2024-08,https://www.yudu.gov.cn/yudu/ydly/202408/0012a582a96e47ecab43324a88afefb5.shtml,2026-09-03,high,citation-only,谢宝金独自扛起68公斤手摇发电机过草地走完长征,
+hist-035,node-08,初心印记丨“走”过长征路的手摇发电机,共产党员网,official-web,2021-08-10,https://www.12371.cn/2021/08/10/ARTI1628587797824252.shtml,2026-09-03,high,citation-only,手摇发电机现藏军事博物馆（国家一级文物）,
+hist-036,node-03,功勋荣誉战旗巡礼｜“强渡乌江模范连”战旗：强渡乌江建奇功,国防部网站,official-web,,http://www.mod.gov.cn/gfbw/gfjy_index/js_214151/4885886.html,2026-09-03,high,citation-only,1935年1月红军在江界河等渡口强渡乌江天险,
+hist-037,node-03,红军强渡乌江经历了怎样艰险?,中央党史和文献研究院,research-org,2016-09-14,https://www.dswxyjy.org.cn/n1/2016/0914/c396980-28716021.html,2026-09-03,high,citation-only,毛振华率勇士夜渡乌江潜伏对岸，与强渡部队里应外合,人名另有“毛正华”写法，系同一人
+hist-038,node-04,我想记住你的名字｜这里为何有一尊“红军菩萨”？,新华网,official-web,2025-01-14,https://www.news.cn/politics/20250114/3df616e99dd94b7ab3f89417e5662dc5/c.html,2026-09-03,high,citation-only,遵义“红军坟”与卫生员龙思泉事迹及其身份考证,
+hist-039,node-04,红军卫生员为什么被称为“红菩萨”,新华网,official-web,2016-08-28,http://news.xinhuanet.com/politics/2016-08/28/c_1119466941.htm,2026-09-03,high,citation-only,红军坟的由来与百姓守护经过,与hist-038交叉核验
+hist-040,node-09,腊子口战役：出奇制胜开辟北上通道,人民网党史,official-web,2021-04-28,http://dangshi.people.com.cn/n1/2021/0428/c436975-32090668.html,2026-09-03,high,citation-only,1935年9月17日红军攻克腊子口天险,
+hist-041,node-09,17岁“云贵川”助力红军打下天险腊子口,人民网,official-web,2019-08-19,http://politics.people.com.cn/n1/2019/0819/c1001-31302867.html,2026-09-03,high,citation-only,苗族小战士“云贵川”攀崖引路奇袭敌后,战士真名不详，仅存外号
+hist-042,node-06,七只船三万人,共产党员网,official-web,2016-10-13,http://news.12371.cn/2016/10/13/ARTI1476351910026867.shtml,2026-09-03,high,citation-only,红军依靠皎平渡七只小船渡过金沙江,摆渡天数“九天九夜”“七天七夜”两说并存
+hist-043,node-06,解读长征（26）：中央红军如何靠七只小船渡过金沙江,人民网党史,official-web,2016-09-14,http://dangshi.people.com.cn/n1/2016/0914/c85037-28716782.html,2026-09-03,high,citation-only,船工分班轮流、人歇船不歇日夜摆渡,船工人数记载有36/37名出入
+hist-044,node-08,长征路上吃皮带,人民网党史,official-web,2016-08-25,http://dangshi.people.com.cn/n1/2016/0825/c85037-28666190.html,2026-09-03,high,citation-only,红四方面军战士周国才过草地煮皮带，留半截烙“长征记”,人名另写作“周广才”，系同一人
+hist-045,node-08,红四方面军战士周广才在长征过草地时吃剩下的皮带,中国国家博物馆,collection-org,2021-08-06,https://www.chnmuseum.cn/sp/gbzp/xhsww/202108/t20210806_251001.shtml,2026-09-03,high,citation-only,半截皮带作为文物馆藏与历史见证,军博、国博分别藏有同类皮带文物

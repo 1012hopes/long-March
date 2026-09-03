@@ -10,8 +10,8 @@
   --route-red: #a6322b;
   --route-red-soft: #d8a39d;
   --evidence-blue: #315e78;
-  --interp-ochre: #9a6b2f;
-  --recon-orange: #b85e32;
+  --interp-ochre: #8f6228;
+  --recon-orange: #a5532c;
   --disputed-violet: #765b78;
   --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
   --sans: "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif;
@@ -149,6 +149,15 @@ body {
   display: flex;
   gap: 4px;
   margin-left: auto;
+}
+
+/* 功能分组线：模式 | 视图开关 | 帮助 */
+.topbar-sep {
+  width: 1px;
+  height: 20px;
+  align-self: center;
+  background: rgba(120, 111, 96, 0.38);
+  flex: none;
 }
 
 .mode-btn {
@@ -329,7 +338,7 @@ body {
   gap: 12px;
   align-items: flex-start;
   width: 100%;
-  padding: 9px 14px 9px 20px;
+  padding: 7px 14px 7px 20px;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -370,6 +379,15 @@ li.selected .tl-dot {
   min-width: 0;
 }
 
+/* 日期与精度标注合并为一行，列表高度减半 */
+.tl-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
 .tl-date {
   font-size: 11px;
   color: var(--ink-soft);
@@ -383,6 +401,19 @@ li.selected .tl-dot {
   line-height: 1.35;
 }
 
+li.selected {
+  background: rgba(166, 50, 43, 0.07);
+}
+
+li.current .tl-dot {
+  border-color: var(--route-red);
+  background: var(--route-red);
+}
+
+li.current .tl-title {
+  font-weight: 700;
+}
+
 li.selected .tl-title {
   color: var(--route-red);
 }
@@ -390,6 +421,7 @@ li.selected .tl-title {
 .tl-precision {
   font-size: 11px;
   color: var(--ink-soft);
+  flex: none;
 }
 
 .left-footer {
@@ -834,7 +866,8 @@ li.selected .tl-title {
   height: 3px;
   margin: 5px auto 0;
   border-radius: 2px;
-  background: var(--archive-line);
+  /* 提升到 3:1 以上，满足 WCAG 非文本对比度 */
+  background: #8f8878;
 }
 
 .bottom-summary {
@@ -1626,8 +1659,19 @@ li.selected .tl-title {
 }
 
 .maplibregl-ctrl-bottom-left {
-  left: 324px !important;
+  /* 贴左栏右缘并留出间距，不再压在面板边上；状态类切换时跟随面板宽度 */
+  left: 344px !important;
   bottom: 102px !important;
+}
+
+.app.left-rail .maplibregl-ctrl-bottom-left {
+  left: 108px !important;
+}
+
+.app.focus .maplibregl-ctrl-bottom-left,
+.app.learning-focus .maplibregl-ctrl-bottom-left {
+  left: 24px !important;
+  bottom: 24px !important;
 }
 
 .maplibregl-ctrl-scale {
@@ -1860,7 +1904,7 @@ summary:focus-visible {
 }
 
 .timeline-item {
-  padding: 10px 15px 10px 21px;
+  padding: 8px 15px 8px 21px;
 }
 
 .timeline-item:hover {
@@ -1872,7 +1916,6 @@ summary:focus-visible {
 }
 
 .tl-precision {
-  margin-top: 1px;
   letter-spacing: 0.04em;
 }
 
@@ -2610,34 +2653,7 @@ summary:focus-visible {
 }
 
 .brand-period {
-  display: grid;
-  grid-template-columns: auto 24px auto;
-  align-items: center;
-  gap: 6px;
-  padding-left: 16px;
-  border-left: 1px solid var(--archive-line);
-  color: var(--route-red);
-  font: 10px/1 var(--mono);
-  letter-spacing: 0.04em;
-}
-
-.brand-period i {
-  position: relative;
-  display: block;
-  height: 1px;
-  background: var(--archive-line);
-}
-
-.brand-period i::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  top: -2px;
-  width: 5px;
-  height: 5px;
-  border: 1px solid var(--route-red);
-  border-radius: 50%;
-  background: var(--paper-light);
+  display: none;
 }
 
 .panel-header {
@@ -2794,10 +2810,6 @@ summary:focus-visible {
 @media (max-width: 1180px) {
   .topbar-brand {
     min-width: 315px;
-  }
-
-  .brand-period {
-    display: none;
   }
 
   .brand-secondary {
@@ -3073,6 +3085,10 @@ summary:focus-visible {
     margin-left: auto;
   }
 
+  .topbar-sep {
+    display: none;
+  }
+
   .topbar-modes {
     order: 2;
     width: 100%;
@@ -3089,5 +3105,406 @@ summary:focus-visible {
 
   .geo-label.landform {
     font-size: 12px;
+  }
+}
+
+/* ---------- 体验增强：时间轴刻度 / 旁白 / 目录 / 巡航 / 离线提示 / 移动抽屉 ---------- */
+/* 时间轴节点刻度（底栏） */
+.scrub-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.scrub-ticks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -7px;
+  height: 18px;
+  pointer-events: none;
+}
+
+.scrub-tick {
+  position: absolute;
+  top: 5px;
+  width: 8px;
+  height: 8px;
+  padding: 6px;
+  box-sizing: content-box;
+  transform: translate(-50%, 0);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.scrub-tick::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 2px;
+  transform: rotate(45deg);
+  background: var(--paper-light);
+  border: 1.5px solid var(--ink-soft);
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.scrub-tick:hover::after,
+.scrub-tick:focus-visible::after {
+  transform: rotate(45deg) scale(1.35);
+  border-color: var(--route-red);
+}
+
+.scrub-tick.reached::after {
+  background: var(--route-red);
+  border-color: var(--route-red);
+}
+
+/* 旁白字幕（播放时） */
+.narration-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 108px;
+  transform: translateX(-50%);
+  z-index: 23;
+  max-width: min(720px, calc(100vw - 48px));
+  padding: 10px 22px;
+  background: rgba(28, 29, 27, 0.82);
+  color: var(--paper-light);
+  border-radius: 4px;
+  font-family: var(--serif);
+  font-size: 15.5px;
+  letter-spacing: 0.06em;
+  line-height: 1.7;
+  text-align: center;
+  animation: caption-in 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+@keyframes caption-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.app.focus .narration-caption,
+.app.learning-focus .narration-caption {
+  display: none;
+}
+
+/* DEM 离线降级提示 */
+.offline-notice {
+  position: absolute;
+  top: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 26;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(560px, calc(100vw - 40px));
+  padding: 10px 16px;
+  background: var(--paper-light);
+  border: 1px solid var(--recon-orange);
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(28, 29, 27, 0.16);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+/* 底栏开关按钮（旁白 / 环境声） */
+.toggle-btn {
+  color: var(--ink-soft);
+}
+
+.toggle-btn.on {
+  color: var(--paper-light);
+  background: var(--evidence-blue);
+  border-color: var(--evidence-blue);
+}
+
+/* 故事目录抽屉 */
+.story-catalog {
+  position: relative;
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(78vh, 720px);
+  display: flex;
+  flex-direction: column;
+  background: var(--paper-light);
+  border: 1px solid rgba(120, 111, 96, 0.48);
+  border-radius: 8px;
+  box-shadow: 0 18px 38px rgba(28, 29, 27, 0.2);
+  overflow: hidden;
+}
+
+.catalog-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.catalog-tools {
+  padding: 12px 16px 6px;
+}
+
+.catalog-search {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--archive-line);
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13.5px;
+  font-family: var(--sans);
+}
+
+.catalog-search:focus-visible {
+  outline: 2px solid var(--evidence-blue);
+  outline-offset: 2px;
+}
+
+.catalog-list {
+  list-style: none;
+  overflow-y: auto;
+  padding: 6px 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.catalog-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 26px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--ink);
+}
+
+.catalog-item:hover {
+  background: rgba(166, 50, 43, 0.06);
+}
+
+.catalog-glyph {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper-light);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.catalog-item-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.catalog-item-body strong {
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.catalog-item-body small {
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+.catalog-precision {
+  font-size: 10.5px;
+  padding: 1px 7px;
+  border-radius: 3px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.catalog-precision.confirmed {
+  color: var(--route-red);
+  border-color: var(--route-red);
+}
+
+.catalog-precision.approximate {
+  color: var(--ink-soft);
+  border-color: var(--archive-line);
+}
+
+.catalog-empty {
+  padding: 18px 12px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+/* 节点学习页：本节点沿途故事 */
+.node-stories {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--archive-line);
+}
+
+.node-stories h3 {
+  color: var(--route-red);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  margin-bottom: 9px;
+}
+
+.node-story-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.node-story-link {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--archive-line);
+  border-radius: 5px;
+  background: rgba(242, 238, 228, 0.6);
+  cursor: pointer;
+  text-align: left;
+  color: var(--ink);
+  transition: border-color 140ms ease, transform 140ms ease;
+}
+
+.node-story-link:hover {
+  border-color: var(--route-red);
+  transform: translateY(-1px);
+}
+
+.node-story-glyph {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper-light);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.node-story-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.node-story-body strong {
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.node-story-body small {
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+/* 故事卡文物配图槽位（授权后填充） */
+.story-figure {
+  margin: 16px 0 4px;
+}
+
+.story-figure img {
+  width: 100%;
+  border-radius: 5px;
+  border: 1px solid var(--archive-line);
+  display: block;
+}
+
+.story-figure figcaption {
+  margin-top: 5px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* 键盘聚焦地图节点标记 */
+.node-marker:focus-visible {
+  outline: none;
+}
+
+.node-marker:focus-visible .node-ring {
+  opacity: 0.85;
+  box-shadow: 0 0 0 3px rgba(166, 50, 43, 0.25);
+}
+
+.node-marker:focus-visible .node-label {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+
+/* 移动端：时间与节点改为可呼出抽屉 */
+.mobile-sheet-toggle {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .mobile-sheet-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 96px;
+    z-index: 24;
+    padding: 9px 0;
+    border: 1px solid rgba(120, 111, 96, 0.48);
+    border-radius: 6px;
+    background: rgba(252, 250, 245, 0.96);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(28, 29, 27, 0.12);
+  }
+
+  .left-panel {
+    display: flex;
+    top: auto;
+    bottom: 140px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-height: 52vh;
+    transform: translateY(calc(100% + 170px));
+    transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 26;
+  }
+
+  .left-panel.mobile-open {
+    transform: none;
+  }
+
+  .left-panel.rail {
+    display: none;
+  }
+
+  .narration-caption {
+    bottom: 150px;
+    font-size: 14px;
+  }
+
+  .offline-notice {
+    top: 130px;
   }
 }

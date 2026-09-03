@@ -8,7 +8,9 @@ import { stories } from "../data/stories";
 import { segments } from "../data/sources";
 import type { MapLayerVisibility } from "../components/LayerPanel";
 import { LINE_WINDOWS, NODE_FRACTIONS } from "../data/time";
-import { getChinaOverviewBounds } from "./overview";
+import { INTRO_DELAY_MS } from "./overview";
+import { SEG_PRIMARY_LINE, cruisePose, segmentWindow } from "./cruise";
+import { activeSegmentAt } from "../data/time";
 import { getMarkerZoomState, getStoryMarkerPresentation } from "./markerPresentation";
 import { shouldHideMarkerForLearning } from "../layout/rightPanelPresentation";
 
@@ -34,10 +36,18 @@ type Props = {
   onSelectNode: (id: string) => void;
   onSelectStory: (id: string) => void;
   onUserGesture: () => void;
+  cruise?: boolean;
+  onTerrainError?: () => void;
 };
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const transparentOf = (rgb: string) => rgb.replace("rgb(", "rgba(").replace(")", ",0)");
+
+// 开场路线脉冲：轻拂既有走廊图层（routeRedSoft，静态透明度 0.2），
+// 两个半周期后回落，把视线引向屏幕上的主线。
+const CORRIDOR_BASE_OPACITY = 0.2;
+const ROUTE_PULSE_MS = 3600;
+const ROUTE_PULSE_CYCLES = 2.5;
 
 const CITY_LABELS: Array<{ name: string; lon: number; lat: number }> = [
   { name: "贵阳", lon: 106.63, lat: 26.65 },
@@ -87,6 +97,7 @@ export default function MapCanvas(props: Props) {
   const contourLabelRefs = useRef<HTMLDivElement[]>([]);
   const epilogueRef = useRef<HTMLDivElement | null>(null);
   const lastFracRef = useRef<Record<string, number>>({});
+  const gesturedRef = useRef(false);
   const [ready, setReady] = useState(false);
   const propsRef = useRef(props);
   propsRef.current = props;
@@ -98,7 +109,8 @@ export default function MapCanvas(props: Props) {
 
     probeHillshade().then((hillshade) => {
       if (disposed || !containerRef.current) return;
-      const [west, south, east, north] = getChinaOverviewBounds();
+      // 初始相机直接取景长征路线全景（ROUTE_BOUNDS 由整条主线外扩 0.6° 计算得出）。
+      const [west, south, east, north] = ROUTE_BOUNDS;
       map = new maplibregl.Map({
         container: containerRef.current,
         style: buildStyle(hillshade),
@@ -140,10 +152,23 @@ export default function MapCanvas(props: Props) {
       map.on("zoom", syncZoomDensity);
       syncZoomDensity();
 
-      const gesture = () => propsRef.current.onUserGesture();
+      const gesture = () => {
+        gesturedRef.current = true;
+        propsRef.current.onUserGesture();
+      };
       for (const ev of ["mousedown", "wheel", "touchstart", "dragstart"]) {
         map.on(ev as never, gesture);
       }
+
+      // 在线 DEM 拉取失败（离线课堂 / 网络受限）时向上层汇报一次，用于降级提示。
+      let terrainErrorReported = false;
+      map.on("error", (event: { sourceId?: string }) => {
+        const sourceId = event.sourceId;
+        if (!terrainErrorReported && (sourceId === "terrainDem" || sourceId === "terrainColorDem")) {
+          terrainErrorReported = true;
+          propsRef.current.onTerrainError?.();
+        }
+      });
 
       map.once("style.load", () => {
         if (disposed) return;
@@ -156,9 +181,17 @@ export default function MapCanvas(props: Props) {
             `<div class="node-ring"></div><div class="node-dot"></div>
              <div class="node-label"><span class="node-no">${String(node.seq).padStart(2, "0")}</span>${node.shortTitle}</div>`
           );
-          el.addEventListener("click", (e) => {
+          // 键盘可达：与鼠标点击等价的打开方式（WCAG 2.1.1）
+          el.setAttribute("role", "button");
+          el.setAttribute("tabindex", "0");
+          el.setAttribute("aria-label", `打开教学节点：${node.shortTitle}`);
+          const openNode = (e: Event) => {
             e.stopPropagation();
             propsRef.current.onSelectNode(node.id);
+          };
+          el.addEventListener("click", openNode);
+          el.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") openNode(e);
           });
           const mk = new maplibregl.Marker({ element: el, anchor: "center" })
             .setLngLat(node.anchor)
@@ -319,6 +352,41 @@ export default function MapCanvas(props: Props) {
         });
 
         setReady(true);
+
+        // 开场：轻拂路线走廊把视线引向主线；用户已动手或偏好减动效时跳过。
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const pulseTimer = window.setTimeout(() => {
+          if (disposed || gesturedRef.current || reducedMotion) return;
+          const startedAt = performance.now();
+          let raf = 0;
+          const tick = (now: number) => {
+            if (disposed || !map) return;
+            if (gesturedRef.current) {
+              // 用户接手地图：走廊恢复静态基线后停止脉冲。
+              for (const line of routeGeometry) {
+                if (line.id.endsWith("a") || line.id.endsWith("b")) continue;
+                if (map.getLayer(`${line.id}-corridor`)) {
+                  map.setPaintProperty(`${line.id}-corridor`, "line-opacity", CORRIDOR_BASE_OPACITY);
+                }
+              }
+              return;
+            }
+            const t = Math.min(1, (now - startedAt) / ROUTE_PULSE_MS);
+            const wave = Math.pow(Math.max(0, Math.sin(Math.PI * ROUTE_PULSE_CYCLES * t)), 1.5);
+            const envelope = Math.min(1, t / 0.12) * Math.min(1, (1 - t) / 0.15);
+            const opacity = CORRIDOR_BASE_OPACITY + 0.38 * wave * envelope;
+            for (const line of routeGeometry) {
+              if (line.id.endsWith("a") || line.id.endsWith("b")) continue;
+              if (map.getLayer(`${line.id}-corridor`)) {
+                map.setPaintProperty(`${line.id}-corridor`, "line-opacity", t >= 1 ? CORRIDOR_BASE_OPACITY : opacity);
+              }
+            }
+            if (t < 1) raf = requestAnimationFrame(tick);
+          };
+          raf = requestAnimationFrame(tick);
+        }, INTRO_DELAY_MS);
+        const stopPulse = () => window.clearTimeout(pulseTimer);
+        loadedMap.once("remove", stopPulse);
       });
     });
 
@@ -469,6 +537,32 @@ export default function MapCanvas(props: Props) {
       map.easeTo({ pitch: 0, duration: 1400 });
     }
   }, [props.terrain3d, ready]);
+
+  // 巡航：进入或换段时，镜头贴路线低空滑翔到段尾（时长与该段剩余播放时间对齐）。
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !props.cruise) return;
+    const t = props.progress;
+    const seg = activeSegmentAt(t);
+    const [w0, w1] = segmentWindow(seg);
+    const lineId = SEG_PRIMARY_LINE[seg];
+    if (!lineId) return;
+    const f = clamp01((t - w0) / (w1 - w0));
+    const startPose = cruisePose(seg, f);
+    const endPose = cruisePose(seg, 1);
+    map.jumpTo({ center: startPose.center, zoom: startPose.zoom, pitch: startPose.pitch, bearing: startPose.bearing });
+    map.easeTo({
+      center: endPose.center,
+      zoom: endPose.zoom,
+      pitch: endPose.pitch,
+      bearing: endPose.bearing,
+      duration: Math.max(1500, (w1 - t) * 42000),
+      easing: (x) => x, // 线性滑翔，与路线显影速度一致
+      essential: true,
+    });
+    // 仅在进入巡航或跨越段边界时重排镜头；段内滑翔交给 easeTo 本身。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.cruise, props.cruise ? activeSegmentAt(props.progress) : null, ready]);
 
   // 相机请求
   useEffect(() => {

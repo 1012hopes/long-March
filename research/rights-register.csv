@@ -5,3 +5,9 @@ media-003,dem-001,开放DEM派生阴影图,derived-raster,NASA,NASA,public-domai
 media-004,all,沿线纪念馆现场照片,photo,project photographer,project team,no,project team,own-camera,yes,yes,yes,yes,摄影者署名,own-release,low,abstract illustration
 media-005,all,馆藏历史照片,photo,unknown,archive or museum,unknown,archive or museum,permission-request,permission-needed,permission-needed,permission-needed,permission-needed,institution-required,,high,bibliographic citation only
 media-006,all,新闻视频截图,video-frame,news agency,news agency,unknown,news agency,web-page,permission-needed,no,no,no,source link,,high,self-produced motion graphics
+media-101,hist-032,中国夷民红军沽鸡支队队旗照片,artifact-photo,中国人民革命军事博物馆,中国人民革命军事博物馆,unknown,中国人民革命军事博物馆,museum-loan-or-licensed-copy,pending,no,no,no,retain-caption-credit,,high,self-drawn illustration of the flag
+media-102,hist-044,半截皮带（“长征记”）文物照片,artifact-photo,中国人民革命军事博物馆,中国人民革命军事博物馆,unknown,中国人民革命军事博物馆,museum-loan-or-licensed-copy,pending,no,no,no,retain-caption-credit,,high,self-drawn illustration of the belt
+media-103,hist-035,手摇发电机文物照片,artifact-photo,中国人民革命军事博物馆,中国人民革命军事博物馆,unknown,中国人民革命军事博物馆,museum-loan-or-licensed-copy,pending,no,no,no,retain-caption-credit,,high,self-drawn illustration of the generator
+media-104,hist-022,沙洲村“半条被子”主题场景照片,museum-scene,沙洲村纪念馆,沙洲村纪念馆,unknown,沙洲村纪念馆,licensed-photo-shoot,pending,no,no,no,retain-caption-credit,,medium,site description without photo
+media-105,hist-013,泸定桥铁索桥现状照片,site-photo,泸定桥纪念馆,泸定桥纪念馆,unknown,泸定桥纪念馆,licensed-photo-shoot,pending,no,no,no,retain-caption-credit,,medium,map-only representation
+media-106,hist-026,老山界（越城岭）山地实景照片,site-photo,现场拍摄,待拍摄授权,unknown,项目组,project-photo-shoot,pending,no,no,no,retain-caption-credit,,low,terrain layer representation
