@@ -68,7 +68,7 @@ test("baseline: base style currently depends on two online raster-dem sources", 
 });
 
 test("local terrain rasters are wired into the base style when bbox metadata is available", async () => {
-  const { buildStyle } = await loadStyleModule();
+  const { MAP_LAYER_IDS, buildStyle } = await loadStyleModule();
   const hillshade = {
     west: 97.25,
     east: 109.5,
@@ -111,10 +111,14 @@ test("local terrain rasters are wired into the base style when bbox metadata is 
   assert.ok(layers.indexOf("offline-terrain-relief") < layers.indexOf("lakes-fill"));
   assert.ok(layers.indexOf("offline-terrain-relief") < layers.indexOf("rivers-line"));
   assert.ok(layers.indexOf("offline-terrain-relief") < layers.indexOf("seg-01-corridor"));
+  assert.ok(MAP_LAYER_IDS.terrain.includes("offline-terrain-color"));
+  assert.ok(MAP_LAYER_IDS.terrain.includes("offline-terrain-relief"));
+  assert.ok(MAP_LAYER_IDS.terrain.includes("global-terrain-color"));
+  assert.ok(MAP_LAYER_IDS.terrain.includes("terrain-relief"));
 });
 
-test("base style omits offline terrain sources and layers when bbox metadata is unavailable", async () => {
-  const { buildStyle } = await loadStyleModule();
+test("base style retains the online terrain fallback when bbox metadata is unavailable", async () => {
+  const { MAP_LAYER_IDS, buildStyle } = await loadStyleModule();
   const style = buildStyle(null);
   const layers = style.layers.map((layer) => layer.id);
 
@@ -122,6 +126,51 @@ test("base style omits offline terrain sources and layers when bbox metadata is 
   assert.equal(style.sources.offlineHillshade, undefined);
   assert.ok(!layers.includes("offline-terrain-color"));
   assert.ok(!layers.includes("offline-terrain-relief"));
+  assert.ok(layers.includes("global-terrain-color"));
+  assert.ok(layers.includes("terrain-relief"));
+  assert.ok(layers.indexOf("land-fill") < layers.indexOf("global-terrain-color"));
+  assert.ok(layers.indexOf("terrain-relief") < layers.indexOf("coastline-overlay"));
+  assert.ok(layers.indexOf("terrain-relief") < layers.indexOf("contour-major"));
+  assert.ok(layers.indexOf("terrain-relief") < layers.indexOf("lakes-fill"));
+  assert.ok(layers.indexOf("terrain-relief") < layers.indexOf("seg-01-corridor"));
+  assert.ok(MAP_LAYER_IDS.terrain.includes("global-terrain-color"));
+  assert.ok(MAP_LAYER_IDS.terrain.includes("terrain-relief"));
+});
+
+test("probeHillshade fetches only bbox metadata before map construction", async () => {
+  const { probeHillshade } = await loadStyleModule();
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    calls.push(String(input));
+    return {
+      ok: true,
+      async json() {
+        return {
+          west: 100,
+          east: 101,
+          south: 20,
+          north: 21,
+          generated: "2026-09-03T00:00:00.000Z",
+        };
+      },
+    };
+  };
+
+  try {
+    const hillshade = await probeHillshade();
+    assert.deepEqual(hillshade, {
+      west: 100,
+      east: 101,
+      south: 20,
+      north: 21,
+      generated: "2026-09-03T00:00:00.000Z",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(calls, ["terrain/hillshade-bbox.json"]);
 });
 
 test.todo("future contract: base style does not permanently depend on two online raster-dem sources");

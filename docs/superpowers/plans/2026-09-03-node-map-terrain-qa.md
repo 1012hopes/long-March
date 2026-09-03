@@ -53,17 +53,18 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 
 ## Task 2 结果（离线地形首屏）
 
-- `app/src/map/style.ts` 现在会在 `hillshade-bbox.json` 与两张本地 PNG 均可用时创建两个 `image` source：`offlineTerrainTint`、`offlineHillshade`。
+- `app/src/map/style.ts` 现在只在首屏前读取 `hillshade-bbox.json`；若 bbox 可用，则创建两个 `image` source：`offlineTerrainTint`、`offlineHillshade`。
 - 影像坐标按 MapLibre `[[west,north],[east,north],[east,south],[west,south]]` 顺序生成，并由 `app/scripts/map-loading.test.mjs` 直接断言。
 - 基础样式新增 `offline-terrain-color` 与 `offline-terrain-relief` 两个 `raster` layer，位置在 `land-fill` 之上、`coastline-overlay` / 等高线 / 水系 / 路线之下。
 - 本地 relief 当前使用 `raster-opacity: 0.38`，tint 使用 `raster-opacity: 0.34`，保持路线红与河流蓝仍是视觉主层。
-- 若 bbox 或任一本地 PNG 缺失，`probeHillshade()` 返回 `null`，基础样式保留现有纸面底图，不阻断地图初始化。
-- 在线 `terrainDem` 与 `terrainColorDem` source 仍保留，供 Task 3 的渐进增强与首屏剥离继续处理。
+- 若 bbox 不存在，基础样式不创建离线 terrain source/layer，而是保留原有在线 `global-terrain-color` 与 `terrain-relief` 作为 Task 2 的回退路径。
+- 若 bbox 存在但后续本地 PNG 404，MapLibre 直接按已有图层栈显示纸面底图，不会因为预探测而延迟初始化或重复下载图片。
+- `MAP_LAYER_IDS.terrain` 现在同时覆盖离线与在线 terrain layer ID，现有显隐控制可兼容两种路径。
 
 ## Task 2 验证证据
 
-- `npm run test:loading`：PASS（3 个断言通过，1 个 Task 3 TODO 保留）。
+- `npm run test:loading`：PASS（4 个断言通过，1 个 Task 3 TODO 保留）。
 - `npm run test:stories`：PASS（8 个断言通过）。
 - `npm run test:map`：PASS（2 个断言通过）。
-- `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-uL_U2Wpz.js` gzip 392.70 kB）。
+- `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-DNGvmrT_.js` gzip 392.83 kB）。
 - `git diff --check`：PASS（无空白错误；仅有 Git 的 LF→CRLF 提示）。

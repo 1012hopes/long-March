@@ -35,7 +35,7 @@ export const ROUTE_LAYER_IDS = routeGeometry.flatMap((line) =>
 );
 
 export const MAP_LAYER_IDS: Record<MapLayerKey, string[]> = {
-  terrain: ["offline-terrain-color", "offline-terrain-relief"],
+  terrain: ["offline-terrain-color", "offline-terrain-relief", "global-terrain-color", "terrain-relief"],
   contours: ["contour-major", "contour-mid", "contour-fine"],
   water: ["lakes-fill", "rivers-line"],
   route: ROUTE_LAYER_IDS,
@@ -50,36 +50,59 @@ function offlineTerrainCoordinates(hillshade: HillshadeBbox) {
   ] as const;
 }
 
-async function probeLocalImage(url: string): Promise<boolean> {
-  try {
-    const res = await fetch(url, { method: "HEAD" });
-    if (res.ok) return true;
-  } catch {
-    // 静态托管若不支持 HEAD，则退回真实图片探测。
-  }
-
-  return await new Promise<boolean>((resolve) => {
-    const image = new Image();
-    image.onload = () => resolve(true);
-    image.onerror = () => resolve(false);
-    image.src = url;
-  });
-}
-
 /** 运行时探测构建产物：山体阴影图及其地理范围（缺失则自动跳过该图层） */
 export async function probeHillshade(): Promise<HillshadeBbox | null> {
   try {
-    const bboxRes = await fetch("terrain/hillshade-bbox.json");
-    if (!bboxRes.ok) return null;
-    const [tintOk, hillshadeOk] = await Promise.all([
-      probeLocalImage("terrain/terrain-tint.png"),
-      probeLocalImage("terrain/hillshade.png"),
-    ]);
-    if (!tintOk || !hillshadeOk) return null;
-    return (await bboxRes.json()) as HillshadeBbox;
+    const res = await fetch("terrain/hillshade-bbox.json");
+    if (!res.ok) return null;
+    return (await res.json()) as HillshadeBbox;
   } catch {
     return null;
   }
+}
+
+function onlineTerrainLayers() {
+  return [
+    {
+      id: "global-terrain-color",
+      type: "color-relief",
+      source: "terrainColorDem",
+      paint: {
+        "color-relief-opacity": 0.9,
+        "color-relief-color": [
+          "interpolate",
+          ["linear"],
+          ["elevation"],
+          -11000, "#B9CBD4",
+          -1000, "#CEDCE1",
+          0, "#DCE7E5",
+          1, "#D4E0C8",
+          200, "#DCE5C5",
+          600, "#CFD7B2",
+          1200, "#D3CAA6",
+          2000, "#C9BA97",
+          3000, "#B8AC98",
+          4000, "#C7C3BA",
+          5400, "#EBEBE5"
+        ],
+        "resampling": "linear",
+      },
+    },
+    {
+      id: "terrain-relief",
+      type: "hillshade",
+      source: "terrainDem",
+      paint: {
+        "hillshade-exaggeration": 0.1,
+        "hillshade-shadow-color": "#5C5F52",
+        "hillshade-highlight-color": "#FCFAF5",
+        "hillshade-accent-color": "#8C8F7C",
+        "hillshade-illumination-direction": 315,
+        "hillshade-method": "multidirectional",
+        "resampling": "linear",
+      },
+    },
+  ] as const;
 }
 
 // 经纬网（5°间隔，纯地理坐标网格，不含任何行政边界）
@@ -207,6 +230,8 @@ export function buildStyle(hillshade: HillshadeBbox | null): StyleSpecification 
         },
       }
     );
+  } else {
+    layers.push(...onlineTerrainLayers());
   }
 
   layers.push(
