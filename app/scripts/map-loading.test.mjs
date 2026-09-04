@@ -679,6 +679,19 @@ test("loadContourLabels retries after non-OK and null payloads in fresh sessions
   );
 });
 
+test("MapCanvas schedules contour-label retry before returning on transient null data", async () => {
+  const mapText = await readFile(new URL("../src/map/MapCanvas.tsx", import.meta.url), "utf8");
+
+  assert.match(
+    mapText,
+    /const loadContourLabelsWhenIdle = async \(\) => \{\s+const data = await loadContourLabels\(\);\s+if \(disposed \|\| contourLabelRefs\.current\.length > 0\) return;\s+if \(!data\) \{\s+contourLabelRetryTimer = window\.setTimeout/s
+  );
+  assert.doesNotMatch(
+    mapText,
+    /if \(disposed \|\| !data \|\| contourLabelRefs\.current\.length > 0\) return;/
+  );
+});
+
 test("ensureOnlineTerrain resolves ready once and reuses the on-demand DEM source", async () => {
   const { ONLINE_TERRAIN_PROBE_LAYER_ID, ensureOnlineTerrain } = await loadTerrainRuntimeModule();
   const map = new FakeMap({ autoSourceLoaded: true });

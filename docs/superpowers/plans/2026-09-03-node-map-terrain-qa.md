@@ -349,3 +349,18 @@ DEM 失败场景在 390×844 下拦截了 9 次 Terrarium 瓦片请求：按钮�
   - `npm run test:stories`
   - `npm run build`
   - `git diff --check`
+
+## Task 8 last follow-up（2026-09-04）
+
+- 最后一条 review finding 是 `MapCanvas.tsx` 中 `loadContourLabelsWhenIdle()` 的 guard 次序：此前 `!data` 仍和 `disposed` / “已有 labels” 共用提前 return，导致下面的 `1500ms` retry 分支实际上不可达。
+- 当前实现已把 guard 拆开：只有 `disposed` 或 `contourLabelRefs.current.length > 0` 才直接 return；瞬时 `!data` 会先调度 retry，再返回。
+- 新增 `app/scripts/map-loading.test.mjs` 的 source-contract 回归，直接验证 retry 调度语句位于 `!data` 分支里，且旧的 `disposed || !data || labels.length` 合并 guard 不再存在。
+- 本轮验证要求已完成：
+  - `npm run test:loading`
+  - `npm run test:map`
+  - `npm run test:scenes`
+  - `npm run test:learning`
+  - `npm run test:stories`
+  - `npm run test:timeline`
+  - `npm run build`
+  - `git diff --check`

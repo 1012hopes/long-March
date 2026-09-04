@@ -363,7 +363,7 @@ export default function MapCanvas(props: Props) {
 
         const loadContourLabelsWhenIdle = async () => {
           const data = await loadContourLabels();
-          if (disposed || !data || contourLabelRefs.current.length > 0) return;
+          if (disposed || contourLabelRefs.current.length > 0) return;
           if (!data) {
             contourLabelRetryTimer = window.setTimeout(() => {
               contourLabelRetryTimer = null;
