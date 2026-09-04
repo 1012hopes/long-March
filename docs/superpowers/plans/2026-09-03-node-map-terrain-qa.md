@@ -191,3 +191,34 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 - 视觉评分：94/100
 - 主要差异：关键水系现在能直接读出于都河、湘江、乌江、赤水河、金沙江与大渡河；node-08 也补上了夹金山/雪山的山地表达。
 - 余留观察：390px 的 node-08 学习视图仍略紧，后续若再精修，可只微调移动端学习卡顶部留白。
+
+## Task 8 结果（渐进式 2D→3D 地形状态）
+
+- `app/src/map/terrainRuntime.ts` 现在同时提供运行时 DEM helper 与一个小型 terrain UI state machine：`local/loading/ready/offline` 四态、待决激活 request id、可取消的 pending 状态，以及按 `plain / river-valley / mountain / plateau` 映射的 exaggeration 值。
+- `cancelOnlineTerrain()` 现在只取消待决加载并返回 `cancelled`，不会在普通“关闭 3D”时抹掉已就绪 DEM；组件卸载时改用 `resetOnlineTerrain()` 做彻底清理。
+- `App` 把 3D 控制从单一 boolean 改成显式状态：后台预取只更新按钮状态，不自动开 3D；用户点击后若 DEM 尚未 ready，会保持本地地形可见并进入 pending，待当前请求完成后才真正切到 3D。
+- `MapCanvas` 在底图与节点场景稳定后用 `idle` + `1200ms` 兜底启动 DEM 预取；若用户手势在待激活期间接管地图，会取消 stale activation request。3D 开启使用 `pitch: 42`，减动效时直接 `jumpTo`，不再走延迟 pitch 回调。
+- 节点场景的地形强度现在按 terrain mode 调整：`plain 1.15`、`river-valley 1.42`、`mountain 1.28`、`plateau 1.32`。路线、水系、标签与 scene annotation 在 3D 中保持可读，没有被地形层吞没。
+- `TopBar` 的 3D 按钮改为用户可见状态文案与可访问语义合同：`3D 地形`、`3D 加载中`、`开启 3D`、`3D 离线/重试`、`关闭 3D`，并带 `aria-pressed`、`aria-busy`、`disabled` 与 `role="status"` live announcement。原先重复的离线 notice 已移除，避免与按钮状态冲突。
+
+## Task 8 验证证据
+
+- `npm run test:loading`：PASS（19 个断言通过，覆盖预取 ready 不自动开 3D、点击前 ready/pending、offline→retry、stale request cancel、terrain mode exaggeration 与 TopBar 可访问合同）。
+- `npm run test:map`：PASS（2 个断言通过）。
+- `npm run test:scenes`：PASS（10 个断言通过）。
+- `npm run test:learning`：PASS（5 个断言通过）。
+- `npm run test:stories`：PASS（8 个断言通过）。
+- `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-DyJaFG_B.js` gzip `403.37 kB`）。
+- `git diff --check`：PASS（无空白错误；仅有 Git 的 LF→CRLF 提示）。
+
+## Task 8 视觉证据
+
+- 截图：`.omx/screenshots/node-map-terrain/task8/node-01-1440x900-2d.png`
+- 截图：`.omx/screenshots/node-map-terrain/task8/node-01-1440x900-3d.png`
+- 截图：`.omx/screenshots/node-map-terrain/task8/node-08-1440x900-2d.png`
+- 截图：`.omx/screenshots/node-map-terrain/task8/node-08-1440x900-3d.png`
+- 截图：`.omx/screenshots/node-map-terrain/task8/node-08-390x844-2d.png`
+- 截图：`.omx/screenshots/node-map-terrain/task8/node-08-390x844-3d.png`
+- 视觉评分：91/100
+- 主要差异：`node-08` 的 3D 高差已经明显可感，山地脊线与谷地起伏比 2D 版本更清楚，同时路线红线、地点白签与山地标签仍然完整可读；`node-01` 因地势本身更平，3D 增益较克制但不会误导为“无效按钮”。
+- 余留观察：390px 的 `node-08` 在 3D 下仍保持可读，但顶部 chrome 与节点卡叠压较紧；如果后续继续磨视觉，可优先只放宽移动端学习态顶部留白，而不是继续提高 exaggeration。

@@ -1,9 +1,13 @@
+import type { TerrainStatus } from "../map/terrainRuntime";
+
 export type Mode = "tour" | "explore" | "sources";
 
 type Props = {
   mode: Mode;
   onMode: (m: Mode) => void;
-  terrain3d: boolean;
+  terrainStatus: TerrainStatus;
+  terrain3dActive: boolean;
+  terrainPendingActivation: boolean;
   onTerrain3d: () => void;
   cruising: boolean;
   onCruiseToggle: () => void;
@@ -13,7 +17,90 @@ type Props = {
   onOpenCatalog: () => void;
 };
 
+type TerrainButtonModel = {
+  label: string;
+  title: string;
+  announcement: string;
+  busy: boolean;
+  disabled: boolean;
+  pressed: boolean;
+  className: string;
+};
+
+export function terrainButtonModel(
+  status: TerrainStatus,
+  active: boolean,
+  pendingActivation: boolean
+): TerrainButtonModel {
+  if (active) {
+    return {
+      label: "关闭 3D",
+      title: "关闭 3D 地形",
+      announcement: "3D 地形已开启",
+      busy: false,
+      disabled: false,
+      pressed: true,
+      className: "tool-btn on",
+    };
+  }
+  if (pendingActivation) {
+    return {
+      label: "3D 加载中",
+      title: "3D 地形加载中，准备后将自动开启",
+      announcement: "3D 地形加载中，准备后将自动开启",
+      busy: true,
+      disabled: true,
+      pressed: false,
+      className: "tool-btn busy",
+    };
+  }
+  if (status === "ready") {
+    return {
+      label: "开启 3D",
+      title: "在线 3D 地形已就绪",
+      announcement: "3D 地形已就绪",
+      busy: false,
+      disabled: false,
+      pressed: false,
+      className: "tool-btn ready",
+    };
+  }
+  if (status === "offline") {
+    return {
+      label: "3D 离线/重试",
+      title: "在线 3D 地形暂时离线，点击重试",
+      announcement: "在线 3D 地形暂时离线，可重试",
+      busy: false,
+      disabled: false,
+      pressed: false,
+      className: "tool-btn retry",
+    };
+  }
+  if (status === "loading") {
+    return {
+      label: "3D 加载中",
+      title: "在线 3D 地形后台加载中，点击后就绪时自动开启",
+      announcement: "在线 3D 地形后台加载中",
+      busy: true,
+      disabled: false,
+      pressed: false,
+      className: "tool-btn busy",
+    };
+  }
+  return {
+    label: "3D 地形",
+    title: "开启在线 3D 地形",
+    announcement: "当前显示本地地形",
+    busy: false,
+    disabled: false,
+    pressed: false,
+    className: "tool-btn",
+  };
+}
+
 export default function TopBar(p: Props) {
+  const terrainButton = terrainButtonModel(p.terrainStatus, p.terrain3dActive, p.terrainPendingActivation);
+
   return (
     <header className="topbar">
       <div className="topbar-cartouche">
@@ -47,8 +134,16 @@ export default function TopBar(p: Props) {
         <button className="tool-btn" onClick={p.onOpenCatalog} title="按时间线浏览全部沿途故事">
           故事目录
         </button>
-        <button className={`tool-btn ${p.terrain3d ? "on" : ""}`} onClick={p.onTerrain3d} title="3D 地形">
-          3D 地形
+        <button
+          className={terrainButton.className}
+          onClick={p.onTerrain3d}
+          title={terrainButton.title}
+          aria-pressed={terrainButton.pressed}
+          aria-busy={terrainButton.busy}
+          aria-describedby="terrain-status-live"
+          disabled={terrainButton.disabled}
+        >
+          {terrainButton.label}
         </button>
         <button
           className={`tool-btn ${p.cruising ? "on" : ""}`}
@@ -65,6 +160,9 @@ export default function TopBar(p: Props) {
           说明
         </button>
       </div>
+      <span id="terrain-status-live" className="sr-only" role="status" aria-live="polite">
+        {terrainButton.announcement}
+      </span>
       </div>
     </header>
   );

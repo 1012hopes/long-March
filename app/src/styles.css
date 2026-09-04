@@ -376,6 +376,26 @@ body {
   color: var(--paper-light);
 }
 
+.tool-btn.ready {
+  border-color: rgba(49, 94, 120, 0.5);
+  color: var(--evidence-blue);
+}
+
+.tool-btn.busy {
+  border-color: rgba(143, 98, 40, 0.45);
+  color: var(--interp-ochre);
+}
+
+.tool-btn.retry {
+  border-color: rgba(165, 83, 44, 0.55);
+  color: var(--recon-orange);
+}
+
+.tool-btn:disabled {
+  cursor: progress;
+  opacity: 0.88;
+}
+
 /* ---------- 通用面板 ---------- */
 .panel-header {
   display: flex;
@@ -2258,6 +2278,18 @@ summary:focus-visible {
 .tool-btn.on {
   background: var(--evidence-blue);
   border-color: var(--evidence-blue);
+}
+
+.tool-btn.ready {
+  background: rgba(49, 94, 120, 0.08);
+}
+
+.tool-btn.busy {
+  background: rgba(143, 98, 40, 0.08);
+}
+
+.tool-btn.retry {
+  background: rgba(165, 83, 44, 0.08);
 }
 
 .panel-header {

@@ -14,6 +14,8 @@ import {
   ensureMajorContours,
   ensureOnlineTerrain,
   loadContourLabels,
+  resetOnlineTerrain,
+  terrainExaggerationForMode,
 } from "./terrainRuntime";
 import {
   SCENE_ANNOTATION_LAYER_ID,
@@ -58,7 +60,8 @@ type Props = {
   selectedStoryId: string | null;
   nodeScene: NodeMapScene | null;
   layers: MapLayerVisibility;
-  terrain3d: boolean;
+  terrain3dActive: boolean;
+  terrain3dRequestId: number | null;
   showEpilogue: boolean;
   learningFocus: boolean;
   padding: CameraPadding;
@@ -67,7 +70,8 @@ type Props = {
   onSelectStory: (id: string) => void;
   onUserGesture: () => void;
   cruise?: boolean;
-  onTerrainError?: () => void;
+  onTerrainStatusChange: (status: "local" | "loading" | "ready" | "offline") => void;
+  onTerrainActivationApplied: (requestId: number) => void;
 };
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -75,6 +79,7 @@ const transparentOf = (rgb: string) => rgb.replace("rgb(", "rgba(").replace(")",
 const CAMERA_MOTION_MS = 1400;
 const ROUTE_REVEAL_MS = 1100;
 const PITCH_MOTION_MS = 900;
+const TERRAIN_3D_PITCH = 42;
 
 const prefersReducedMotion = () =>
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
@@ -139,7 +144,7 @@ export default function MapCanvas(props: Props) {
   const [ready, setReady] = useState(false);
   const propsRef = useRef(props);
   const contourRuntimeStartedRef = useRef(false);
-  const terrainErrorReportedRef = useRef(false);
+  const terrainPrefetchStartedRef = useRef(false);
   propsRef.current = props;
 
   const clearSceneAnnotations = () => {
@@ -177,12 +182,6 @@ export default function MapCanvas(props: Props) {
     if (map.getLayer(SCENE_ANNOTATION_LAYER_ID)) {
       map.setPaintProperty(SCENE_ANNOTATION_LAYER_ID, "text-opacity-transition", { duration, delay: 0 });
     }
-  };
-
-  const reportTerrainOffline = () => {
-    if (terrainErrorReportedRef.current) return;
-    terrainErrorReportedRef.current = true;
-    propsRef.current.onTerrainError?.();
   };
 
   // 初始化
@@ -248,11 +247,6 @@ export default function MapCanvas(props: Props) {
       for (const ev of ["mousedown", "wheel", "touchstart", "dragstart"]) {
         map.on(ev as never, gesture);
       }
-
-      map.on("error", (event: { sourceId?: string }) => {
-        const sourceId = event.sourceId;
-        if (sourceId === "terrainDem") reportTerrainOffline();
-      });
 
       map.once("style.load", () => {
         if (disposed) return;
@@ -494,11 +488,11 @@ export default function MapCanvas(props: Props) {
 
     return () => {
       disposed = true;
-      if (map) cancelOnlineTerrain(map);
+      if (map) resetOnlineTerrain(map);
       map?.remove();
       mapRef.current = null;
       contourRuntimeStartedRef.current = false;
-      terrainErrorReportedRef.current = false;
+      terrainPrefetchStartedRef.current = false;
       markerRefs.current.clear();
       storyRefs.current.clear();
       secondaryRefs.current = [];
@@ -720,40 +714,43 @@ export default function MapCanvas(props: Props) {
     map.resize();
   }, [props.learningFocus, ready]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || terrainPrefetchStartedRef.current) return;
+    let cancelled = false;
+    let kickoffTimer = 0;
+    const startPrefetch = () => {
+      if (cancelled || terrainPrefetchStartedRef.current) return;
+      terrainPrefetchStartedRef.current = true;
+      propsRef.current.onTerrainStatusChange("loading");
+      void ensureOnlineTerrain(map).then((result) => {
+        if (cancelled || result === "cancelled") return;
+        propsRef.current.onTerrainStatusChange(result);
+      });
+    };
+    const onIdle = () => {
+      map.off("idle", onIdle);
+      window.clearTimeout(kickoffTimer);
+      startPrefetch();
+    };
+    kickoffTimer = window.setTimeout(startPrefetch, 1200);
+    map.on("idle", onIdle);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(kickoffTimer);
+      map.off("idle", onIdle);
+    };
+  }, [ready]);
+
   // 3D 地形
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
     const reduceMotion = prefersReducedMotion();
     let cancelled = false;
-    const syncTerrain = async () => {
-      if (props.terrain3d) {
-        const status = await ensureOnlineTerrain(map);
-        if (cancelled) return;
-        if (status !== "ready") {
-          reportTerrainOffline();
-          try {
-            map.setTerrain(null);
-          } catch {
-            /* map removed while leaving 3D mode */
-          }
-          return;
-        }
-        terrainErrorReportedRef.current = false;
-        try {
-          map.setTerrain({ source: "terrainDem", exaggeration: 1.3 });
-        } catch {
-          reportTerrainOffline();
-          return;
-        }
-        if (reduceMotion) {
-          map.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: 52 });
-        } else {
-          map.easeTo({ pitch: 52, duration: CAMERA_MOTION_MS });
-        }
-        return;
-      }
-      terrainErrorReportedRef.current = false;
+    const exaggeration = terrainExaggerationForMode(props.nodeScene?.terrainMode ?? "plain");
+
+    const clearTerrain = () => {
       try {
         map.setTerrain(null);
       } catch {
@@ -761,16 +758,60 @@ export default function MapCanvas(props: Props) {
       }
       if (reduceMotion) {
         map.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: 0 });
-      } else {
+      } else if (Math.abs(map.getPitch()) > 0.2) {
         map.easeTo({ pitch: 0, duration: CAMERA_MOTION_MS });
       }
     };
+
+    const applyTerrain = () => {
+      try {
+        map.setTerrain({ source: "terrainDem", exaggeration });
+      } catch {
+        propsRef.current.onTerrainStatusChange("offline");
+        clearTerrain();
+        return false;
+      }
+      if (reduceMotion) {
+        map.jumpTo({
+          center: map.getCenter(),
+          zoom: map.getZoom(),
+          bearing: map.getBearing(),
+          pitch: TERRAIN_3D_PITCH,
+        });
+      } else if (Math.abs(map.getPitch() - TERRAIN_3D_PITCH) > 0.2) {
+        map.easeTo({ pitch: TERRAIN_3D_PITCH, duration: CAMERA_MOTION_MS });
+      }
+      return true;
+    };
+
+    const syncTerrain = async () => {
+      if (props.terrain3dActive) {
+        propsRef.current.onTerrainStatusChange("ready");
+        applyTerrain();
+        return;
+      }
+      if (props.terrain3dRequestId === null) {
+        clearTerrain();
+        return;
+      }
+      propsRef.current.onTerrainStatusChange("loading");
+      const status = await ensureOnlineTerrain(map);
+      if (cancelled || status === "cancelled") return;
+      propsRef.current.onTerrainStatusChange(status);
+      if (status !== "ready") {
+        clearTerrain();
+        return;
+      }
+      if (!applyTerrain()) return;
+      propsRef.current.onTerrainActivationApplied(props.terrain3dRequestId);
+    };
+
     void syncTerrain();
     return () => {
       cancelled = true;
-      cancelOnlineTerrain(map);
+      if (!props.terrain3dActive) cancelOnlineTerrain(map);
     };
-  }, [props.terrain3d, ready]);
+  }, [props.nodeScene?.terrainMode, props.terrain3dActive, props.terrain3dRequestId, ready]);
 
   // 巡航：进入或换段时，镜头贴路线低空滑翔到段尾（时长与该段剩余播放时间对齐）。
   useEffect(() => {

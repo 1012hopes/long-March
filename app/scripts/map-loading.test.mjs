@@ -1,29 +1,33 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import { nodes } from "../src/data/nodes.ts";
 import { nodeScenes } from "../src/data/nodeScenes.ts";
 
 const stylePath = new URL("../src/map/style.ts", import.meta.url);
 const terrainRuntimePath = new URL("../src/map/terrainRuntime.ts", import.meta.url);
+const topBarPath = new URL("../src/components/TopBar.tsx", import.meta.url);
 const nodeTerrainSizingPath = new URL("./node-terrain-sizing.mjs", import.meta.url);
 const routeGeometryPath = new URL("../src/data/route-geometry.json", import.meta.url);
 const terrainDir = new URL("../public/terrain/", import.meta.url);
 const terrainNodeDir = new URL("../public/terrain/nodes/", import.meta.url);
 const today = "2026-09-03";
 
-async function importTranspiledModule(filename, sourceText) {
+async function importTranspiledModule(filename, sourceText, compilerOptions = {}) {
   const transpiled = ts.transpileModule(sourceText, {
     compilerOptions: {
       module: ts.ModuleKind.ES2022,
       target: ts.ScriptTarget.ES2022,
+      jsx: ts.JsxEmit.ReactJSX,
+      ...compilerOptions,
     },
   }).outputText;
-  const tempDir = await mkdtemp(join(tmpdir(), "map-style-test-"));
+  const tempDir = await mkdtemp(join(process.cwd(), ".map-style-test-"));
   const tempPath = join(tempDir, filename);
   await writeFile(tempPath, transpiled);
   try {
@@ -55,6 +59,11 @@ async function loadTerrainRuntimeModule() {
   return importTranspiledModule("terrainRuntime.mjs", runtimeText);
 }
 
+async function loadTopBarModule() {
+  const sourceText = await readFile(topBarPath, "utf8");
+  return importTranspiledModule("TopBar.mjs", sourceText);
+}
+
 async function loadNodeTerrainSizingModule() {
   const sourceText = await readFile(nodeTerrainSizingPath, "utf8");
   return importTranspiledModule("nodeTerrainSizing.mjs", sourceText);
@@ -83,6 +92,10 @@ class FakeMap {
     this.listeners = new Map();
     this.sourceAdds = [];
     this.layerAdds = [];
+    this.terrain = null;
+    this.pitch = 0;
+    this.center = { lng: 104.5, lat: 29 };
+    this.bearing = 0;
     this.removed = false;
   }
 
@@ -114,6 +127,16 @@ class FakeMap {
   removeSource(id) {
     this.assertActive();
     this.sources.delete(id);
+  }
+
+  getTerrain() {
+    this.assertActive();
+    return this.terrain;
+  }
+
+  setTerrain(terrain) {
+    this.assertActive();
+    this.terrain = terrain;
   }
 
   getLayer(id) {
@@ -161,6 +184,32 @@ class FakeMap {
 
   getZoom() {
     return this.options.zoom ?? 6;
+  }
+
+  getPitch() {
+    return this.pitch;
+  }
+
+  getCenter() {
+    return this.center;
+  }
+
+  getBearing() {
+    return this.bearing;
+  }
+
+  jumpTo(options) {
+    this.assertActive();
+    this.center = options.center ?? this.center;
+    this.pitch = options.pitch ?? this.pitch;
+    this.bearing = options.bearing ?? this.bearing;
+  }
+
+  easeTo(options) {
+    this.assertActive();
+    this.pitch = options.pitch ?? this.pitch;
+    this.center = options.center ?? this.center;
+    this.bearing = options.bearing ?? this.bearing;
   }
 
   remove() {
@@ -501,7 +550,7 @@ test("cancelOnlineTerrain clears pending listeners and timers before map removal
     assert.equal(map.listenerCount("error"), 0);
     assert.equal(pendingTimers.size, 0);
     assert.equal(clearedTimers.length, 1);
-    assert.equal(await promise, "offline");
+    assert.equal(await promise, "cancelled");
   } finally {
     globalThis.setTimeout = originalSetTimeout;
     globalThis.clearTimeout = originalClearTimeout;
@@ -520,4 +569,123 @@ test("runtime helpers return safely after map removal", async () => {
     await ensureDetailContours(map, 9, true);
     assert.equal(await ensureOnlineTerrain(map), "offline");
   });
+});
+
+test("terrain UI state reaches ready after background prefetch without auto-enabling 3D", async () => {
+  const { createTerrainUiState, syncTerrainStatus } = await loadTerrainRuntimeModule();
+  let state = createTerrainUiState();
+
+  state = syncTerrainStatus(state, "loading");
+  state = syncTerrainStatus(state, "ready");
+
+  assert.equal(state.status, "ready");
+  assert.equal(state.active, false);
+  assert.equal(state.pendingActivationRequestId, null);
+});
+
+test("terrain UI state keeps a user-initiated activation pending until ready, then marks 3D active", async () => {
+  const { applyTerrainActivation, createTerrainUiState, requestTerrainActivation, syncTerrainStatus } =
+    await loadTerrainRuntimeModule();
+  let state = createTerrainUiState();
+  const request = requestTerrainActivation(state);
+  state = request.state;
+
+  assert.equal(state.status, "loading");
+  assert.equal(state.active, false);
+  assert.equal(state.pendingActivationRequestId, request.requestId);
+
+  state = syncTerrainStatus(state, "ready");
+  state = applyTerrainActivation(state, request.requestId);
+
+  assert.equal(state.status, "ready");
+  assert.equal(state.active, true);
+  assert.equal(state.pendingActivationRequestId, null);
+});
+
+test("terrain UI state allows offline retry after a failed activation", async () => {
+  const { applyTerrainActivation, createTerrainUiState, requestTerrainActivation, syncTerrainStatus } =
+    await loadTerrainRuntimeModule();
+  let state = createTerrainUiState();
+  const first = requestTerrainActivation(state);
+  state = first.state;
+  state = syncTerrainStatus(state, "offline");
+
+  assert.equal(state.status, "offline");
+  assert.equal(state.active, false);
+  assert.equal(state.pendingActivationRequestId, null);
+
+  const second = requestTerrainActivation(state);
+  state = syncTerrainStatus(second.state, "ready");
+  state = applyTerrainActivation(state, second.requestId);
+
+  assert.ok(second.requestId > first.requestId);
+  assert.equal(state.status, "ready");
+  assert.equal(state.active, true);
+});
+
+test("stale terrain activation requests are ignored after cancellation", async () => {
+  const { applyTerrainActivation, cancelTerrainActivationRequest, createTerrainUiState, requestTerrainActivation, syncTerrainStatus } =
+    await loadTerrainRuntimeModule();
+  let state = createTerrainUiState();
+  const request = requestTerrainActivation(state);
+  state = cancelTerrainActivationRequest(request.state);
+
+  assert.equal(state.status, "local");
+  assert.equal(state.pendingActivationRequestId, null);
+
+  state = syncTerrainStatus(state, "ready");
+  state = applyTerrainActivation(state, request.requestId);
+
+  assert.equal(state.status, "ready");
+  assert.equal(state.active, false);
+  assert.equal(state.pendingActivationRequestId, null);
+});
+
+test("terrain exaggeration stays within the expected band for each terrain mode", async () => {
+  const { terrainExaggerationForMode } = await loadTerrainRuntimeModule();
+
+  assert.equal(terrainExaggerationForMode("plain"), 1.15);
+  assert.equal(terrainExaggerationForMode("river-valley"), 1.42);
+  assert.equal(terrainExaggerationForMode("mountain"), 1.28);
+  assert.equal(terrainExaggerationForMode("plateau"), 1.32);
+});
+
+test("TopBar exposes terrain status text, pressed state, busy semantics, and retry copy", async () => {
+  const { default: TopBar, terrainButtonModel } = await loadTopBarModule();
+
+  assert.deepEqual(terrainButtonModel("local", false, false), {
+    label: "3D 地形",
+    title: "开启在线 3D 地形",
+    announcement: "当前显示本地地形",
+    busy: false,
+    disabled: false,
+    pressed: false,
+    className: "tool-btn",
+  });
+  assert.equal(terrainButtonModel("ready", false, false).label, "开启 3D");
+  assert.equal(terrainButtonModel("offline", false, false).label, "3D 离线/重试");
+
+  const html = renderToStaticMarkup(
+    React.createElement(TopBar, {
+      mode: "explore",
+      onMode: () => {},
+      terrainStatus: "loading",
+      terrain3dActive: false,
+      terrainPendingActivation: true,
+      onTerrain3d: () => {},
+      cruising: false,
+      onCruiseToggle: () => {},
+      focusMode: false,
+      onFocusToggle: () => {},
+      onInfo: () => {},
+      onOpenCatalog: () => {},
+    })
+  );
+
+  assert.match(html, /3D 加载中/);
+  assert.match(html, /aria-pressed="false"/);
+  assert.match(html, /aria-busy="true"/);
+  assert.match(html, /disabled=""/);
+  assert.match(html, /role="status"/);
+  assert.match(html, /3D 地形加载中，准备后将自动开启/);
 });

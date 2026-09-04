@@ -4,6 +4,15 @@ type ContourVisibility = "visible" | "none";
 
 type ContourLabelFeature = GeoJSON.Feature<GeoJSON.Point, { elevation?: number }>;
 export type ContourLabelCollection = GeoJSON.FeatureCollection<GeoJSON.Point, { elevation?: number }>;
+export type TerrainStatus = "local" | "loading" | "ready" | "offline";
+export type TerrainMode = "plain" | "river-valley" | "mountain" | "plateau";
+
+export type TerrainUiState = {
+  status: TerrainStatus;
+  active: boolean;
+  pendingActivationRequestId: number | null;
+  nextActivationRequestId: number;
+};
 
 type RuntimeState = {
   majorContoursPromise: Promise<void> | null;
@@ -13,7 +22,7 @@ type RuntimeState = {
   onlineTerrainReady: boolean;
 };
 
-type OnlineTerrainResult = "ready" | "offline";
+export type OnlineTerrainResult = "ready" | "offline" | "cancelled";
 
 type OnlineTerrainSourceEvent = {
   sourceId?: string;
@@ -102,6 +111,91 @@ const onlineTerrainSource = {
   attribution: "Elevation: AWS Terrain Tiles, SRTM and NASADEM derived",
 } as const;
 
+const TERRAIN_EXAGGERATION: Record<TerrainMode, number> = {
+  plain: 1.15,
+  "river-valley": 1.42,
+  mountain: 1.28,
+  plateau: 1.32,
+};
+
+export function createTerrainUiState(): TerrainUiState {
+  return {
+    status: "local",
+    active: false,
+    pendingActivationRequestId: null,
+    nextActivationRequestId: 1,
+  };
+}
+
+export function requestTerrainActivation(state: TerrainUiState): { state: TerrainUiState; requestId: number } {
+  const requestId = state.nextActivationRequestId;
+  return {
+    requestId,
+    state: {
+      ...state,
+      status: state.status === "ready" ? "ready" : "loading",
+      active: false,
+      pendingActivationRequestId: requestId,
+      nextActivationRequestId: requestId + 1,
+    },
+  };
+}
+
+export function cancelTerrainActivationRequest(state: TerrainUiState): TerrainUiState {
+  if (state.pendingActivationRequestId === null || state.active) return state;
+  return {
+    ...state,
+    status: state.status === "loading" ? "local" : state.status,
+    pendingActivationRequestId: null,
+  };
+}
+
+export function disableTerrain3d(state: TerrainUiState): TerrainUiState {
+  return {
+    ...state,
+    active: false,
+    pendingActivationRequestId: null,
+  };
+}
+
+export function syncTerrainStatus(state: TerrainUiState, status: TerrainStatus): TerrainUiState {
+  if (status === "offline") {
+    return {
+      ...state,
+      status,
+      active: false,
+      pendingActivationRequestId: null,
+    };
+  }
+  if (status === "local") {
+    return {
+      ...state,
+      status,
+      active: false,
+      pendingActivationRequestId: null,
+    };
+  }
+  if (status === "loading" && state.active) return state;
+  return {
+    ...state,
+    status,
+  };
+}
+
+export function applyTerrainActivation(state: TerrainUiState, requestId: number): TerrainUiState {
+  if (state.pendingActivationRequestId !== requestId) return state;
+  return {
+    ...state,
+    status: "ready",
+    active: true,
+    pendingActivationRequestId: null,
+  };
+}
+
+export function terrainExaggerationForMode(mode: TerrainMode): number {
+  return TERRAIN_EXAGGERATION[mode];
+}
+
 function stateFor(map: MlMap): RuntimeState {
   const existing = runtimeStates.get(map);
   if (existing) return existing;
@@ -186,6 +280,7 @@ async function ensureContourLayer(
 
 function removeOnlineTerrainSource(map: MlMap) {
   withMapGuard(map, undefined, () => {
+    if (map.getTerrain()) map.setTerrain(null);
     if (map.getSource("terrainDem")) map.removeSource("terrainDem");
   });
 }
@@ -241,12 +336,17 @@ export async function ensureDetailContours(map: MlMap, zoom: number, visible = t
 export function cancelOnlineTerrain(map: MlMap): void {
   const state = runtimeStates.get(map);
   if (!state) return;
-  state.onlineTerrainReady = false;
   if (!state.onlineTerrainPending) {
-    removeOnlineTerrainSource(map);
     return;
   }
-  finishPendingOnlineTerrain(map, state, state.onlineTerrainPending, "offline");
+  finishPendingOnlineTerrain(map, state, state.onlineTerrainPending, "cancelled");
+}
+
+export function resetOnlineTerrain(map: MlMap): void {
+  const state = runtimeStates.get(map);
+  if (state?.onlineTerrainPending) finishPendingOnlineTerrain(map, state, state.onlineTerrainPending, "cancelled");
+  if (state) state.onlineTerrainReady = false;
+  removeOnlineTerrainSource(map);
 }
 
 export async function ensureOnlineTerrain(map: MlMap): Promise<OnlineTerrainResult> {

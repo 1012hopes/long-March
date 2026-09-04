@@ -18,6 +18,16 @@ import { NODE_FRACTIONS, activeSegmentAt } from "./data/time";
 import { narrationFor } from "./data/narration";
 import { startAmbient, stopAmbient } from "./audio/ambient";
 import { SEG_PRIMARY_LINE } from "./map/cruise";
+import {
+  applyTerrainActivation,
+  cancelTerrainActivationRequest,
+  createTerrainUiState,
+  disableTerrain3d,
+  requestTerrainActivation,
+  syncTerrainStatus,
+  type TerrainStatus,
+  type TerrainUiState,
+} from "./map/terrainRuntime";
 import { getRightPanelPresentation } from "./layout/rightPanelPresentation";
 import { scenePlaceLabel } from "./map/nodeScenePresentation";
 
@@ -145,7 +155,7 @@ export default function App() {
           : null
   );
   const [depth, setDepth] = useState<"concise" | "deep">("concise");
-  const [terrain3d, setTerrain3d] = useState(false);
+  const [terrainUi, setTerrainUi] = useState<TerrainUiState>(() => createTerrainUiState());
   const [cruising, setCruising] = useState(false);
   const [showEpilogue, setShowEpilogue] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
@@ -157,8 +167,6 @@ export default function App() {
   const [cameraReq, setCameraReq] = useState<CameraReq | null>(null);
   const [voiceOn, setVoiceOn] = useState(false);
   const [ambientOn, setAmbientOn] = useState(false);
-  const [terrainOffline, setTerrainOffline] = useState(false);
-
   const suppressInitialSelectedScrollRef = useRef(true);
   const seqRef = useRef(0);
   const timelineRef = useRef(timelineT);
@@ -232,7 +240,7 @@ export default function App() {
   const exitCruise = useCallback(() => {
     setCruising(false);
     setPlaying(false);
-    setTerrain3d(false);
+    setTerrainUi((current) => disableTerrain3d(current));
     fly({ bounds: ROUTE_BOUNDS, zoom: 6.4, duration: CAMERA_MOTION_MS });
   }, [fly]);
 
@@ -246,7 +254,7 @@ export default function App() {
       }
       activeSegRef.current = null;
       setCruising(true);
-      setTerrain3d(true);
+      setTerrainUi((current) => requestTerrainActivation(current).state);
       setPlaying(true);
     }
   }, [exitCruise]);
@@ -545,6 +553,13 @@ export default function App() {
     [mode]
   );
 
+  const toggleTerrain3d = useCallback(() => {
+    setTerrainUi((current) => {
+      if (current.active || current.pendingActivationRequestId !== null) return disableTerrain3d(current);
+      return requestTerrainActivation(current).state;
+    });
+  }, []);
+
   return (
     <div
       className={`app ${focusMode ? "focus" : ""} ${
@@ -563,16 +578,21 @@ export default function App() {
         selectedStoryId={selectedStoryId}
         nodeScene={activeNodeScene}
         layers={mapLayers}
-        terrain3d={terrain3d}
+        terrain3dActive={terrainUi.active}
+        terrain3dRequestId={terrainUi.pendingActivationRequestId}
         showEpilogue={showEpilogue}
         learningFocus={rightPanelPresentation.learningFocus}
         padding={padding}
         cameraReq={cameraReq}
         onSelectNode={selectNode}
         onSelectStory={selectStory}
-        onUserGesture={() => setPlaying(false)}
+        onUserGesture={() => {
+          setPlaying(false);
+          setTerrainUi((current) => cancelTerrainActivationRequest(current));
+        }}
         cruise={cruising}
-        onTerrainError={() => setTerrainOffline(true)}
+        onTerrainStatusChange={(status: TerrainStatus) => setTerrainUi((current) => syncTerrainStatus(current, status))}
+        onTerrainActivationApplied={(requestId) => setTerrainUi((current) => applyTerrainActivation(current, requestId))}
       />
 
       {activeNodeScene && selectedNode && !focusMode && (
@@ -593,21 +613,14 @@ export default function App() {
         </div>
       )}
 
-      {terrainOffline && (
-        <div className="offline-notice" role="status">
-          <span>3D 地形数据在线加载失败——路线、节点与史料浏览不受影响；离线课堂包制作中。</span>
-          <button className="mini-btn" onClick={() => setTerrainOffline(false)}>
-            知道了
-          </button>
-        </div>
-      )}
-
       {!focusMode && (
         <TopBar
           mode={mode}
           onMode={enterMode}
-          terrain3d={terrain3d}
-          onTerrain3d={() => setTerrain3d((v) => !v)}
+          terrainStatus={terrainUi.status}
+          terrain3dActive={terrainUi.active}
+          terrainPendingActivation={terrainUi.pendingActivationRequestId !== null}
+          onTerrain3d={toggleTerrain3d}
           cruising={cruising}
           onCruiseToggle={toggleCruise}
           focusMode={focusMode}
