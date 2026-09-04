@@ -60,6 +60,7 @@ type Props = {
   selectedStoryId: string | null;
   nodeScene: NodeMapScene | null;
   layers: MapLayerVisibility;
+  terrainStatus: "local" | "loading" | "ready" | "offline";
   terrain3dActive: boolean;
   terrain3dRequestId: number | null;
   showEpilogue: boolean;
@@ -717,6 +718,7 @@ export default function MapCanvas(props: Props) {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || terrainPrefetchStartedRef.current) return;
+    if (props.terrain3dActive || props.terrain3dRequestId !== null || props.terrainStatus !== "local") return;
     let cancelled = false;
     let kickoffTimer = 0;
     const startPrefetch = () => {
@@ -724,6 +726,7 @@ export default function MapCanvas(props: Props) {
       terrainPrefetchStartedRef.current = true;
       propsRef.current.onTerrainStatusChange("loading");
       void ensureOnlineTerrain(map).then((result) => {
+        if (result !== "ready") terrainPrefetchStartedRef.current = false;
         if (cancelled || result === "cancelled") return;
         propsRef.current.onTerrainStatusChange(result);
       });
@@ -740,7 +743,7 @@ export default function MapCanvas(props: Props) {
       window.clearTimeout(kickoffTimer);
       map.off("idle", onIdle);
     };
-  }, [ready]);
+  }, [props.terrain3dActive, props.terrain3dRequestId, props.terrainStatus, ready]);
 
   // 3D 地形
   useEffect(() => {

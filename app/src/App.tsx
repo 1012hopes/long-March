@@ -578,6 +578,7 @@ export default function App() {
         selectedStoryId={selectedStoryId}
         nodeScene={activeNodeScene}
         layers={mapLayers}
+        terrainStatus={terrainUi.status}
         terrain3dActive={terrainUi.active}
         terrain3dRequestId={terrainUi.pendingActivationRequestId}
         showEpilogue={showEpilogue}

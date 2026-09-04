@@ -542,6 +542,7 @@ test("cancelOnlineTerrain clears pending listeners and timers before map removal
     assert.equal(pendingTimers.size, 1);
 
     cancelOnlineTerrain(map);
+    assert.equal(map.getSource("terrainDem"), undefined);
     map.remove();
     map.emit("sourcedata", { sourceId: "terrainDem", isSourceLoaded: true });
     map.emit("error", { sourceId: "terrainDem" });
@@ -569,6 +570,23 @@ test("runtime helpers return safely after map removal", async () => {
     await ensureDetailContours(map, 9, true);
     assert.equal(await ensureOnlineTerrain(map), "offline");
   });
+});
+
+test("cancelling a pending terrain load resets the source so a later retry can reach ready", async () => {
+  const { cancelOnlineTerrain, ensureOnlineTerrain } = await loadTerrainRuntimeModule();
+  const map = new FakeMap();
+
+  const firstAttempt = ensureOnlineTerrain(map);
+  assert.ok(map.getSource("terrainDem"), "first attempt should add the DEM source");
+
+  cancelOnlineTerrain(map);
+  assert.equal(await firstAttempt, "cancelled");
+  assert.equal(map.getSource("terrainDem"), undefined, "cancel should remove the half-loaded DEM source");
+
+  map.options.autoSourceLoaded = true;
+  assert.equal(await ensureOnlineTerrain(map), "ready");
+  assert.ok(map.getSource("terrainDem"), "retry should recreate the DEM source");
+  assert.deepEqual(map.sourceAdds.map((entry) => entry.id), ["terrainDem", "terrainDem"]);
 });
 
 test("terrain UI state reaches ready after background prefetch without auto-enabling 3D", async () => {
@@ -635,6 +653,26 @@ test("stale terrain activation requests are ignored after cancellation", async (
 
   state = syncTerrainStatus(state, "ready");
   state = applyTerrainActivation(state, request.requestId);
+
+  assert.equal(state.status, "ready");
+  assert.equal(state.active, false);
+  assert.equal(state.pendingActivationRequestId, null);
+});
+
+test("gesture-cancelled terrain activation recovers to local and later ready without becoming stuck", async () => {
+  const { cancelTerrainActivationRequest, createTerrainUiState, requestTerrainActivation, syncTerrainStatus } =
+    await loadTerrainRuntimeModule();
+  let state = createTerrainUiState();
+
+  const request = requestTerrainActivation(state);
+  state = request.state;
+  state = cancelTerrainActivationRequest(state);
+
+  assert.equal(state.status, "local");
+  assert.equal(state.active, false);
+  assert.equal(state.pendingActivationRequestId, null);
+
+  state = syncTerrainStatus(state, "ready");
 
   assert.equal(state.status, "ready");
   assert.equal(state.active, false);

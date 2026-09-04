@@ -222,3 +222,20 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 - 视觉评分：91/100
 - 主要差异：`node-08` 的 3D 高差已经明显可感，山地脊线与谷地起伏比 2D 版本更清楚，同时路线红线、地点白签与山地标签仍然完整可读；`node-01` 因地势本身更平，3D 增益较克制但不会误导为“无效按钮”。
 - 余留观察：390px 的 `node-08` 在 3D 下仍保持可读，但顶部 chrome 与节点卡叠压较紧；如果后续继续磨视觉，可优先只放宽移动端学习态顶部留白，而不是继续提高 exaggeration。
+
+## Task 8 review follow-up（2026-09-04）
+
+- Review 指出的真实问题是：`cancelOnlineTerrain()` 在 pending DEM 被取消时只结束 promise，不会移除半加载 `terrainDem` source；同时 `MapCanvas` 的 `terrainPrefetchStartedRef` 也不会在 cancelled/offline 后复位，导致后续预取/重试可能踩到脏状态。
+- 运行时修复采用“取消即完整回收”路径：pending load 结束为 `cancelled` 或 `offline` 时都会移除 `terrainDem` source 并清空 runtime pending；下一次 `ensureOnlineTerrain()` 会重新创建 source，而不是复用可能已经错过 `sourcedata` 事件的旧对象。
+- `MapCanvas` 的后台预取现在只在 `TerrainStatus === "local"` 且没有 active/requested 3D 时启动；若预取结果为 `cancelled` 或 `offline`，预取 latch 会复位。这样用户手势取消 stale activation 后，状态先回到 `local/ready`，之后才允许新的后台或显式重试。
+- 这次没有改动视觉输出或 TopBar 文案，Task 8 的截图与 91/100 视觉判断仍然有效；follow-up 主要是把取消路径从“看起来能停”补成“停完之后还能再来一遍”。
+
+## Task 8 review follow-up 验证证据
+
+- `npm run test:loading`：PASS（21 个断言通过；新增“cancel 后移除 source 并可 retry 到 ready”与“gesture cancel 后 UI state 回到 local/ready”覆盖）。
+- `npm run test:map`：PASS（2 个断言通过）。
+- `npm run test:scenes`：PASS（10 个断言通过）。
+- `npm run test:learning`：PASS（5 个断言通过）。
+- `npm run test:stories`：PASS（8 个断言通过）。
+- `npm run build`：PASS（follow-up 完成后再次通过）。
+- `git diff --check`：PASS（仅 LF→CRLF 提示）。

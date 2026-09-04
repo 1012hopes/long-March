@@ -303,7 +303,7 @@ function finishPendingOnlineTerrain(
     map.off("sourcedata", pending.onSourceData);
     map.off("error", pending.onError);
   });
-  if (result === "offline") removeOnlineTerrainSource(map);
+  if (result !== "ready") removeOnlineTerrainSource(map);
   pending.resolve(result);
 }
 
