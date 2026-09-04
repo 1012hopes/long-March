@@ -239,3 +239,37 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 - `npm run test:stories`：PASS（8 个断言通过）。
 - `npm run build`：PASS（follow-up 完成后再次通过）。
 - `git diff --check`：PASS（仅 LF→CRLF 提示）。
+
+## Task 9 结果（节点学习双栏编辑排版与联动强调）
+
+- `app/src/components/RightPanel.tsx` 的 node learning 视图改为“全宽 header + 主叙事列 + 证据侧栏 + 稳定底部导航”结构；桌面端使用约 `70 / 30` 的内部两栏，外层仍保持地图 `45 / 55` 分屏。
+- 新增 `app/src/components/NodeEvidenceRail.tsx` 与 `app/src/components/nodeLearning.ts`，把右栏所需数据收束成可测试的 model：路线 certainty、scene terrain mode/read cue、`node.deep` 证据摘录、相关故事、source 入口、以及已有 elevation profile 摘要。
+- 证据侧栏只复用现有 node/story/source/scene/profile 数据，不新增历史叙述；相关故事从主列移除，避免双列重复渲染同一内容。
+- 新增 typed `LearningEmphasis = "route" | "terrain" | "evidence" | null`，由显式按钮、焦点、点击与 blur 驱动；强调只改变图层强度和标注可读性，不改 `selectedNodeId`、`selectedStoryId`、`timelineT`、`revealT` 或相机请求。
+- `MapCanvas` 现在把 emphasis 映射到 route candidate opacity/width、offline terrain raster opacity、node hydrography line/point 强度、scene badge/label opacity；`clear/close/select` 时统一回到基础 node scene。
+- 移动端 `<=900px` 下，panel 内部折叠为单列顺序流，`390x844` 不再横向溢出；为避免长标题节点出现 cartouche/panel 叠压，学习态移动端隐藏 map-side cartouche，保留正文与证据顺序。
+- `app/scripts/learning-focus.test.mjs` 新增 evidence rail data reuse、desktop/mobile layout contract、explicit emphasis controls、以及 mobile cartouche hide contract；`app/scripts/node-scenes.test.mjs` 新增 emphasis paint retuning regression。
+
+## Task 9 验证证据
+
+- `npm run test:learning`：PASS（7 个断言通过，覆盖新 evidence/model/layout/emphasis/mobile 合同）。
+- `npm run test:scenes`：PASS（11 个断言通过，新增 emphasis 图层回归）。
+- `npm run test:loading`：PASS（21 个断言通过）。
+- `npm run test:timeline`：PASS（13 个断言通过）。
+- `npm run test:stories`：PASS（8 个断言通过）。
+- `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-CkFaISZv.css` gzip `21.98 kB`，`dist/assets/index-CGNRr6w6.js` gzip `405.13 kB`）。
+- `git diff --check`：PASS（无空白错误；仅 LF→CRLF 提示）。
+
+## Task 9 视觉证据
+
+- 截图：`.omx/screenshots/node-map-terrain/task9/node-01-1440x900.png`
+- 截图：`.omx/screenshots/node-map-terrain/task9/node-05-1440x900.png`
+- 截图：`.omx/screenshots/node-map-terrain/task9/node-08-1440x900.png`
+- 截图：`.omx/screenshots/node-map-terrain/task9/node-01-1920x1080.png`
+- 截图：`.omx/screenshots/node-map-terrain/task9/node-05-1920x1080.png`
+- 截图：`.omx/screenshots/node-map-terrain/task9/node-05-390x844.png`
+- 截图：`.omx/screenshots/node-map-terrain/task9/node-08-390x844.png`
+- 视觉评分：93/100
+- 主要差异：桌面端右栏不再留下大块空白，主叙事与证据的阅读职责分开得更清楚；node-05 / node-08 的路线 certainty、地形 cue、海拔摘要和证据摘录都能在一屏内形成有效对照。
+- 移动端结论：`390x844` 下无横向裁切，修复后不再出现 cartouche 压住 panel 标题的问题；node-08 的长标题会自然换行，但仍处于可读范围。
+- 余留观察：移动端首屏主要展示 header + emphasis + narrative 开头，证据摘录与 stories/source 入口需要继续向下滚动，这是单列布局下的可接受取舍。

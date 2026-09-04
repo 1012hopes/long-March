@@ -3,9 +3,12 @@ import maplibregl, { type Map as MlMap, type LngLatBoundsLike } from "maplibre-g
 import "maplibre-gl/dist/maplibre-gl.css";
 import { buildStyle, MAP_LAYER_IDS, probeHillshade } from "./style";
 import type { NodeMapScene } from "../data/nodeScenes";
+import type { LearningEmphasis } from "../components/nodeLearning";
 import {
   emptyNodeHydrography,
   NODE_HYDROGRAPHY_SOURCE_ID,
+  NODE_HYDROGRAPHY_LINE_LAYER_ID,
+  NODE_HYDROGRAPHY_POINT_LAYER_ID,
   sceneHydrography,
 } from "../data/nodeHydrography";
 import {
@@ -23,6 +26,7 @@ import {
   type SceneMapLike,
   annotationPresentation,
   applyNodeScene,
+  applyNodeSceneEmphasis,
   clearNodeScene,
 } from "./nodeScenePresentation";
 import routeGeometry from "../data/route-geometry.json";
@@ -65,6 +69,7 @@ type Props = {
   terrain3dRequestId: number | null;
   showEpilogue: boolean;
   learningFocus: boolean;
+  learningEmphasis: LearningEmphasis;
   padding: CameraPadding;
   cameraReq: CameraReq | null;
   onSelectNode: (id: string) => void;
@@ -644,6 +649,63 @@ export default function MapCanvas(props: Props) {
       clearNodeScene(sceneMap);
     };
   }, [props.learningFocus, props.nodeScene, ready]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const route = props.learningFocus && props.learningEmphasis === "route";
+    const terrain = props.learningFocus && props.learningEmphasis === "terrain";
+    const evidence = props.learningFocus && props.learningEmphasis === "evidence";
+    container.classList.toggle("emphasis-route", route);
+    container.classList.toggle("emphasis-terrain", terrain);
+    container.classList.toggle("emphasis-evidence", evidence);
+  }, [props.learningFocus, props.learningEmphasis]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const scene = props.learningFocus ? props.nodeScene : null;
+    if (!map || !ready || !scene) return;
+
+    applyNodeSceneEmphasis(map as unknown as SceneMapLike, scene, props.learningEmphasis);
+
+    const terrainColorOpacity =
+      props.learningEmphasis === "terrain" ? 0.44 : props.learningEmphasis === "route" ? 0.28 : 0.34;
+    const terrainReliefOpacity =
+      props.learningEmphasis === "terrain" ? 0.54 : props.learningEmphasis === "route" ? 0.31 : 0.38;
+    for (const layerId of MAP_LAYER_IDS.terrain) {
+      if (!map.getLayer(layerId)) continue;
+      map.setPaintProperty(
+        layerId,
+        "raster-opacity",
+        layerId === "offline-terrain-color" ? terrainColorOpacity : terrainReliefOpacity
+      );
+    }
+
+    if (map.getLayer(NODE_HYDROGRAPHY_LINE_LAYER_ID)) {
+      map.setPaintProperty(
+        NODE_HYDROGRAPHY_LINE_LAYER_ID,
+        "line-opacity",
+        props.learningEmphasis === "terrain" ? 1 : props.learningEmphasis === "route" ? 0.68 : 0.9
+      );
+      map.setPaintProperty(
+        NODE_HYDROGRAPHY_LINE_LAYER_ID,
+        "line-width",
+        props.learningEmphasis === "terrain" ? ["case", ["==", ["get", "prominence"], "focus"], 3.5, 2.5] : ["case", ["==", ["get", "prominence"], "focus"], 3.1, 2.2]
+      );
+    }
+    if (map.getLayer(NODE_HYDROGRAPHY_POINT_LAYER_ID)) {
+      map.setPaintProperty(
+        NODE_HYDROGRAPHY_POINT_LAYER_ID,
+        "circle-opacity",
+        props.learningEmphasis === "terrain" ? 0.98 : props.learningEmphasis === "route" ? 0.72 : 0.9
+      );
+      map.setPaintProperty(
+        NODE_HYDROGRAPHY_POINT_LAYER_ID,
+        "circle-radius",
+        props.learningEmphasis === "terrain" ? ["case", ["==", ["get", "prominence"], "focus"], 6.8, 5] : ["case", ["==", ["get", "prominence"], "focus"], 6.2, 4.6]
+      );
+    }
+  }, [props.learningFocus, props.learningEmphasis, props.nodeScene, ready]);
 
   useEffect(() => {
     for (const [storyId, rec] of storyRefs.current) {

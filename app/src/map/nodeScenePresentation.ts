@@ -1,6 +1,7 @@
 import routeGeometry from "../data/route-geometry.json" with { type: "json" };
 import type { NodeMapScene } from "../data/nodeScenes.ts";
 import type { NodeUnit } from "../data/nodes.ts";
+import type { LearningEmphasis } from "../components/nodeLearning";
 
 export const SCENE_ANNOTATION_SOURCE_ID = "node-scene-annotations";
 export const SCENE_BADGE_LAYER_ID = "node-scene-badges";
@@ -53,6 +54,91 @@ const ROUTE_ROLE_PAINT: Record<
     lineWidth: 2.1,
   },
 };
+
+const EMPHASIS_ROUTE_PAINT: Record<
+  Exclude<LearningEmphasis, null>,
+  Record<
+    RouteSceneRole,
+    { candidateOpacity: number; corridorOpacity: number; corridorWidth: number; lineOpacity: number; lineWidth: number }
+  >
+> = {
+  route: {
+    highlight: {
+      candidateOpacity: 0.98,
+      corridorOpacity: 0.42,
+      corridorWidth: 28,
+      lineOpacity: 1,
+      lineWidth: 5.4,
+    },
+    context: {
+      candidateOpacity: 0.2,
+      corridorOpacity: 0.05,
+      corridorWidth: 13,
+      lineOpacity: 0.18,
+      lineWidth: 2.45,
+    },
+    dim: {
+      candidateOpacity: 0.08,
+      corridorOpacity: 0.014,
+      corridorWidth: 8,
+      lineOpacity: 0.05,
+      lineWidth: 1.85,
+    },
+  },
+  terrain: {
+    highlight: {
+      candidateOpacity: 0.72,
+      corridorOpacity: 0.2,
+      corridorWidth: 18,
+      lineOpacity: 0.84,
+      lineWidth: 4,
+    },
+    context: {
+      candidateOpacity: 0.16,
+      corridorOpacity: 0.04,
+      corridorWidth: 12,
+      lineOpacity: 0.16,
+      lineWidth: 2.2,
+    },
+    dim: {
+      candidateOpacity: 0.06,
+      corridorOpacity: 0.012,
+      corridorWidth: 8,
+      lineOpacity: 0.05,
+      lineWidth: 1.8,
+    },
+  },
+  evidence: {
+    highlight: {
+      candidateOpacity: 0.88,
+      corridorOpacity: 0.22,
+      corridorWidth: 20,
+      lineOpacity: 0.92,
+      lineWidth: 4.2,
+    },
+    context: {
+      candidateOpacity: 0.18,
+      corridorOpacity: 0.045,
+      corridorWidth: 12,
+      lineOpacity: 0.16,
+      lineWidth: 2.2,
+    },
+    dim: {
+      candidateOpacity: 0.08,
+      corridorOpacity: 0.02,
+      corridorWidth: 9,
+      lineOpacity: 0.06,
+      lineWidth: 1.9,
+    },
+  },
+};
+
+const SCENE_PAINT = {
+  base: { circleOpacity: 0.88, textOpacity: 0.95, approxRadius: 11, confirmedRadius: 9 },
+  route: { circleOpacity: 0.74, textOpacity: 0.8, approxRadius: 10.5, confirmedRadius: 8.6 },
+  terrain: { circleOpacity: 0.72, textOpacity: 0.78, approxRadius: 10.5, confirmedRadius: 8.6 },
+  evidence: { circleOpacity: 0.99, textOpacity: 1, approxRadius: 12, confirmedRadius: 10 },
+} as const;
 
 const BASE_ROUTE_PAINT = {
   candidateOpacity: 0.95,
@@ -261,9 +347,16 @@ export function scenePlaceLabel(scene: NodeMapScene, node: NodeUnit): string {
 
 export function applyNodeScene(map: SceneMapLike, scene: NodeMapScene): void {
   ensureSceneLayers(map, scene);
+  applyNodeSceneEmphasis(map, scene, null);
+}
+
+export function applyNodeSceneEmphasis(map: SceneMapLike, scene: NodeMapScene, emphasis: LearningEmphasis): void {
+  const routePaints = emphasis ? EMPHASIS_ROUTE_PAINT[emphasis] : ROUTE_ROLE_PAINT;
+  const scenePaint = emphasis ? SCENE_PAINT[emphasis] : SCENE_PAINT.base;
+  ensureSceneLayers(map, scene);
 
   for (const line of routeGeometry) {
-    const role = ROUTE_ROLE_PAINT[routeSceneRole(line.segmentId, scene)];
+    const role = routePaints[routeSceneRole(line.segmentId, scene)];
     const isCandidate = line.id.endsWith("a") || line.id.endsWith("b");
     if (isCandidate) {
       map.setPaintProperty(`${line.id}-cand`, "line-opacity", role.candidateOpacity);
@@ -275,6 +368,14 @@ export function applyNodeScene(map: SceneMapLike, scene: NodeMapScene): void {
     map.setPaintProperty(`${line.id}-line`, "line-opacity", role.lineOpacity);
     map.setPaintProperty(`${line.id}-line`, "line-width", role.lineWidth);
   }
+
+  map.setPaintProperty(SCENE_BADGE_LAYER_ID, "circle-opacity", scenePaint.circleOpacity);
+  map.setPaintProperty(
+    SCENE_BADGE_LAYER_ID,
+    "circle-radius",
+    ["case", ["==", ["get", "certainty"], "approximate"], scenePaint.approxRadius, scenePaint.confirmedRadius]
+  );
+  map.setPaintProperty(SCENE_ANNOTATION_LAYER_ID, "text-opacity", scenePaint.textOpacity);
 }
 
 export function clearNodeScene(map: SceneMapLike): void {

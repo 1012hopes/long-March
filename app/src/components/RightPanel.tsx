@@ -4,19 +4,14 @@ import { sources, sourcesByNode } from "../data/sources";
 import { stories, type StoryPoint } from "../data/stories";
 import { getStoryMarkerPresentation } from "../map/markerPresentation";
 import { getRightPanelPresentation } from "../layout/rightPanelPresentation";
+import NodeEvidenceRail, { LearningEmphasisToolbar } from "./NodeEvidenceRail";
+import { CONTENT_TAG_LABEL, type LearningEmphasis } from "./nodeLearning";
 
 export type RightView =
   | { type: "node"; nodeId: string }
   | { type: "story"; storyId: string }
   | { type: "sources"; nodeId?: string }
   | null;
-
-const TAG_LABEL: Record<ContentTag, string> = {
-  fact: "事实",
-  interp: "解释",
-  recon: "可视化还原",
-  disputed: "来源有争议",
-};
 
 const STORY_KIND_LABEL: Record<StoryPoint["kind"], string> = {
   decision: "决策",
@@ -29,7 +24,7 @@ const STORY_KIND_LABEL: Record<StoryPoint["kind"], string> = {
 };
 
 export function TagChip({ tag }: { tag: ContentTag }) {
-  return <span className={`tag tag-${tag}`}>{TAG_LABEL[tag]}</span>;
+  return <span className={`tag tag-${tag}`}>{CONTENT_TAG_LABEL[tag]}</span>;
 }
 
 type Props = {
@@ -41,112 +36,112 @@ type Props = {
   onSelectStory: (id: string) => void;
   onOpenSources: (nodeId?: string) => void;
   onPrevNext: (dir: -1 | 1) => void;
+  learningEmphasis: LearningEmphasis;
+  onLearningEmphasisChange: (value: LearningEmphasis) => void;
   tourChrome?: { index: number; total: number; stopTitle: string } | null;
 };
 
 function NodeCard({ node, p }: { node: NodeUnit; p: Props }) {
   const nodeSources = sourcesByNode(node.id);
-  const nodeStories = stories.filter((story) => story.nodeId === node.id);
   return (
-    <div className="node-card">
-      <div className="node-head">
-        <span className="node-index mono">单元 {String(node.seq).padStart(2, "0")} / 09</span>
-        <h2>{node.title}</h2>
-        <div className="node-meta">
-          <span className="chip chip-date">{node.displayDateLabel}</span>
-          <span className="chip chip-precision">
-            {node.precision === "confirmed" ? "史料明确" : node.precision === "approximate" ? "约略" : "多候选 · 争议"}
-          </span>
-          {node.secondary.length > 0 && (
-            <span className="chip chip-place">
-              {[...node.secondary.map((s) => s.name)].join(" · ")}
+    <article className="node-card">
+      <div className="node-card-shell">
+        <div className="node-head">
+          <span className="node-index mono">单元 {String(node.seq).padStart(2, "0")} / 09</span>
+          <h2>{node.title}</h2>
+          <div className="node-meta">
+            <span className="chip chip-date">{node.displayDateLabel}</span>
+            <span className="chip chip-precision">
+              {node.precision === "confirmed" ? "史料明确" : node.precision === "approximate" ? "约略" : "多候选 · 争议"}
             </span>
-          )}
-        </div>
-      </div>
-
-      <div className="depth-switch" role="tablist" aria-label="阅读层级">
-        <button className={p.depth === "concise" ? "active" : ""} onClick={() => p.onDepth("concise")}>
-          简明
-        </button>
-        <button className={p.depth === "deep" ? "active" : ""} onClick={() => p.onDepth("deep")}>
-          深入
-        </button>
-      </div>
-
-      <section className="concise-block">
-        <h3>这一站</h3>
-        <p>{node.concise}</p>
-      </section>
-
-      <blockquote className="core-question">
-        <span className="cq-mark">问</span>
-        {node.coreQuestion}
-      </blockquote>
-
-      {p.depth === "deep" && (
-        <section className="deep-blocks">
-          {node.deep.map((b, i) => (
-            <p key={i} className="deep-item">
-              <TagChip tag={b.tag} />
-              <span>{b.text}</span>
-            </p>
-          ))}
-        </section>
-      )}
-
-      <details className="five-q">
-        <summary>五问展开</summary>
-        <ol>
-          {node.fiveQuestions.map((fq, i) => (
-            <li key={i}>
-              <strong>{fq.q}</strong>
-              <span>{fq.a}</span>
-            </li>
-          ))}
-        </ol>
-      </details>
-
-      <div className="watch-note">
-        <span className="watch-mark">回看</span>
-        {node.watch}
-      </div>
-
-      {nodeStories.length > 0 && (
-        <section className="node-stories">
-          <h3>本节点沿途故事</h3>
-          <div className="node-story-list">
-            {nodeStories.map((story) => {
-              const presentation = getStoryMarkerPresentation(story.shortTitle, story.kind);
-              return (
-                <button key={story.id} className="node-story-link" onClick={() => p.onSelectStory(story.id)}>
-                  <span className="node-story-glyph" aria-hidden="true">{presentation.glyph}</span>
-                  <span className="node-story-body">
-                    <strong>{story.title}</strong>
-                    <small>{story.dateLabel} · {story.place}</small>
-                  </span>
-                  <span aria-hidden="true">→</span>
-                </button>
-              );
-            })}
+            {node.secondary.length > 0 && (
+              <span className="chip chip-place">
+                {[...node.secondary.map((s) => s.name)].join(" · ")}
+              </span>
+            )}
           </div>
-        </section>
-      )}
 
-      <div className="node-footer">
-        <button className="ghost-btn" onClick={() => p.onOpenSources(node.id)}>
-          史料与出处 · {nodeSources.length} 条
-        </button>
-        <div className="pager">
-          <button className="ghost-btn" onClick={() => p.onPrevNext(-1)} disabled={node.seq <= 1}>
-            上一站
+          <div className="depth-switch" role="tablist" aria-label="阅读层级">
+            <button className={p.depth === "concise" ? "active" : ""} onClick={() => p.onDepth("concise")}>
+              简明
+            </button>
+            <button className={p.depth === "deep" ? "active" : ""} onClick={() => p.onDepth("deep")}>
+              深入
+            </button>
+          </div>
+        </div>
+
+        <div className="node-learning-grid">
+          <div className="node-main-column">
+            <LearningEmphasisToolbar
+              activeEmphasis={p.learningEmphasis}
+              className="narrative-emphasis-toolbar"
+              onEmphasisChange={p.onLearningEmphasisChange}
+            />
+
+            <section className="concise-block">
+              <h3>这一站</h3>
+              <p>{node.concise}</p>
+            </section>
+
+            <blockquote className="core-question">
+              <span className="cq-mark">问</span>
+              {node.coreQuestion}
+            </blockquote>
+
+            {p.depth === "deep" && (
+              <section className="deep-blocks">
+                {node.deep.map((b, i) => (
+                  <p key={i} className="deep-item">
+                    <TagChip tag={b.tag} />
+                    <span>{b.text}</span>
+                  </p>
+                ))}
+              </section>
+            )}
+
+            <details className="five-q">
+              <summary>五问展开</summary>
+              <ol>
+                {node.fiveQuestions.map((fq, i) => (
+                  <li key={i}>
+                    <strong>{fq.q}</strong>
+                    <span>{fq.a}</span>
+                  </li>
+                ))}
+              </ol>
+            </details>
+
+            <div className="watch-note">
+              <span className="watch-mark">回看</span>
+              {node.watch}
+            </div>
+          </div>
+
+          <NodeEvidenceRail
+            node={node}
+            activeEmphasis={p.learningEmphasis}
+            onEmphasisChange={p.onLearningEmphasisChange}
+            onOpenSources={p.onOpenSources}
+            onSelectStory={p.onSelectStory}
+          />
+        </div>
+
+        <div className="node-footer">
+          <button className="ghost-btn" onClick={() => p.onOpenSources(node.id)}>
+            史料与出处 · {nodeSources.length} 条
           </button>
-          <button className="ghost-btn" onClick={() => p.onPrevNext(1)} disabled={node.seq >= 9}>
-            下一站
-          </button>
+          <div className="pager">
+            <button className="ghost-btn" onClick={() => p.onPrevNext(-1)} disabled={node.seq <= 1}>
+              上一站
+            </button>
+            <button className="ghost-btn" onClick={() => p.onPrevNext(1)} disabled={node.seq >= 9}>
+              下一站
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 

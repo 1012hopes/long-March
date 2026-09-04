@@ -10,6 +10,7 @@ import InfoSheet from "./components/InfoSheet";
 import StoryCatalog from "./components/StoryCatalog";
 import LayerPanel, { type MapLayerVisibility } from "./components/LayerPanel";
 import MapTitleReveal from "./components/MapTitleReveal";
+import { type LearningEmphasis } from "./components/nodeLearning";
 import { TOUR_STOPS } from "./tour";
 import { nodes, type NodeUnit } from "./data/nodes";
 import { sceneForNode } from "./data/nodeScenes";
@@ -165,6 +166,7 @@ export default function App() {
   const [mobileTimelineOpen, setMobileTimelineOpen] = useState(false);
   const [bottomExpanded, setBottomExpanded] = useState(false);
   const [cameraReq, setCameraReq] = useState<CameraReq | null>(null);
+  const [learningEmphasis, setLearningEmphasis] = useState<LearningEmphasis>(null);
   const [voiceOn, setVoiceOn] = useState(false);
   const [ambientOn, setAmbientOn] = useState(false);
   const suppressInitialSelectedScrollRef = useRef(true);
@@ -340,6 +342,7 @@ export default function App() {
       setMode(m);
       setPlaying(false);
       setFocusMode(false);
+      setLearningEmphasis(null);
       setMobileTimelineOpen(false);
       setSelectedStoryId(null);
       if (m !== "tour") setRevealT(1);
@@ -365,6 +368,7 @@ export default function App() {
       const node = nodes.find((x) => x.id === id)!;
       setMode("explore");
       setPlaying(false);
+      setLearningEmphasis(null);
       setSelectedNodeId(id);
       setSelectedStoryId(null);
       setShowEpilogue(false);
@@ -382,6 +386,7 @@ export default function App() {
       if (!story) return;
       setMode("explore");
       setPlaying(false);
+      setLearningEmphasis(null);
       setSelectedStoryId(id);
       setSelectedNodeId(story.nodeId);
       setRevealT(1);
@@ -420,8 +425,13 @@ export default function App() {
         if (infoOpen) setInfoOpen(false);
         else if (catalogOpen) setCatalogOpen(false);
         else if (cruising) exitCruise();
-        else if (focusMode) setFocusMode(false);
-        else if (rightView) setRightView(null);
+        else if (focusMode) {
+          setFocusMode(false);
+          setLearningEmphasis(null);
+        } else if (rightView) {
+          setRightView(null);
+          setLearningEmphasis(null);
+        }
         else if (bottomExpanded) setBottomExpanded(false);
         else if (mobileTimelineOpen) setMobileTimelineOpen(false);
       } else if (e.key === "?" ) {
@@ -542,6 +552,7 @@ export default function App() {
       const next = Math.max(0, Math.min(1, t));
       const nextNode = nodeAtTimelineT(next);
       setPlaying(false);
+      setLearningEmphasis(null);
       setShowEpilogue(false);
       setTimelineT(next);
       if (selectedNodeRef.current !== nextNode.id || selectedStoryRef.current !== null || rightViewRef.current?.type !== "node") {
@@ -583,6 +594,7 @@ export default function App() {
         terrain3dRequestId={terrainUi.pendingActivationRequestId}
         showEpilogue={showEpilogue}
         learningFocus={rightPanelPresentation.learningFocus}
+        learningEmphasis={learningEmphasis}
         padding={padding}
         cameraReq={cameraReq}
         onSelectNode={selectNode}
@@ -632,7 +644,13 @@ export default function App() {
       )}
 
       {focusMode && (
-        <button className="focus-exit" onClick={() => setFocusMode(false)}>
+        <button
+          className="focus-exit"
+          onClick={() => {
+            setFocusMode(false);
+            setLearningEmphasis(null);
+          }}
+        >
           退出专注地图
         </button>
       )}
@@ -669,6 +687,7 @@ export default function App() {
         depth={depth}
         onDepth={setDepth}
         onClose={() => {
+          setLearningEmphasis(null);
           setSelectedStoryId(null);
           if (mode === "tour") enterMode("explore");
           else setRightView(null);
@@ -677,10 +696,13 @@ export default function App() {
         onSelectStory={selectStory}
         onOpenSources={(nodeId) => {
           setMode("explore");
+          setLearningEmphasis(null);
           setSelectedStoryId(null);
           setRightView({ type: "sources", nodeId });
         }}
         onPrevNext={prevNext}
+        learningEmphasis={learningEmphasis}
+        onLearningEmphasisChange={setLearningEmphasis}
         tourChrome={
           stop && stop.kind !== "intro"
             ? { index: tourIndex + 1, total: TOUR_STOPS.length, stopTitle: stop.title }

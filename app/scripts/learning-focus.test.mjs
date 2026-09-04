@@ -1,10 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { nodes } from "../src/data/nodes.ts";
+import { sourcesByNode } from "../src/data/sources.ts";
+import { stories } from "../src/data/stories.ts";
 import {
   getRightPanelPresentation,
   shouldHideMarkerForLearning,
 } from "../src/layout/rightPanelPresentation.ts";
+import { buildNodeEvidenceRailModel } from "../src/components/nodeLearning.ts";
 
 test("node learning view becomes an immersive 45/55 map and reading split", () => {
   assert.deepEqual(getRightPanelPresentation("node"), {
@@ -63,4 +67,53 @@ test("node learning wiring creates scene markers and the map-side cartouche cont
   assert.ok(cssText.includes(".node-scene-cartouche"), "styles should include the node scene cartouche treatment");
   assert.ok(cssText.includes(".map-scene-annotation"), "styles should include map scene annotation styling");
   assert.match(cssText, /\.node-scene-cartouche\s*\{[\s\S]*?left: 10px;[\s\S]*?right: 10px;[\s\S]*?width: auto;/);
+});
+
+test("evidence rail model reuses existing node stories, sources, excerpts, and profile data", () => {
+  const node = nodes.find((item) => item.id === "node-05");
+  assert.ok(node);
+
+  const model = buildNodeEvidenceRailModel(node);
+
+  assert.equal(model.routeSegments.length, node.segmentIds.length);
+  assert.deepEqual(
+    model.evidenceItems.map((item) => item.text),
+    node.deep.map((item) => item.text),
+    "evidence rail should reuse node.deep excerpts instead of inventing new copy"
+  );
+  assert.deepEqual(
+    model.relatedStories.map((story) => story.id),
+    stories.filter((story) => story.nodeId === node.id).map((story) => story.id),
+    "related stories should come from existing story data"
+  );
+  assert.equal(model.sourceCount, sourcesByNode(node.id).length);
+  assert.equal(model.elevationSummary?.profileId, "seg-04a");
+  assert.equal(model.elevationSummary?.fromCandidate, true);
+});
+
+test("node learning panel exposes desktop split structure, mobile collapse rules, and explicit emphasis controls", async () => {
+  const panelText = await readFile(new URL("../src/components/RightPanel.tsx", import.meta.url), "utf8");
+  const railText = await readFile(new URL("../src/components/NodeEvidenceRail.tsx", import.meta.url), "utf8");
+  const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+  const mapText = await readFile(new URL("../src/map/MapCanvas.tsx", import.meta.url), "utf8");
+  const cssText = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
+
+  assert.match(panelText, /node-learning-grid/);
+  assert.match(panelText, /node-main-column/);
+  assert.match(panelText, /NodeEvidenceRail/);
+  assert.doesNotMatch(panelText, /className="node-stories"/, "related stories should not remain duplicated in the main column");
+
+  assert.match(railText, /learning-emphasis-toolbar/);
+  assert.match(railText, /aria-pressed/);
+  assert.match(railText, /onFocus/);
+  assert.match(railText, /onBlur/);
+  assert.match(railText, /onClick/);
+
+  assert.match(appText, /useState<LearningEmphasis>\(null\)/);
+  assert.match(appText, /learningEmphasis=\{learningEmphasis\}/);
+  assert.match(mapText, /learningEmphasis: LearningEmphasis/);
+
+  assert.match(cssText, /\.node-learning-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*2\.1fr\)\s+minmax\(240px,\s*0\.9fr\)/);
+  assert.match(cssText, /@media \(max-width: 900px\)[\s\S]*\.node-learning-grid\s*\{[\s\S]*grid-template-columns:\s*1fr/);
+  assert.match(cssText, /@media \(max-width: 900px\)[\s\S]*\.app\.learning-focus \.node-scene-cartouche\s*\{[\s\S]*display:\s*none/);
 });

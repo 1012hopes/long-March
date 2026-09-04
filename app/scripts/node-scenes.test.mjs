@@ -9,6 +9,7 @@ import {
   SCENE_ANNOTATION_LAYER_ID,
   SCENE_ANNOTATION_SOURCE_ID,
   SCENE_BADGE_LAYER_ID,
+  applyNodeSceneEmphasis,
   annotationPresentation,
   applyNodeScene,
   clearNodeScene,
@@ -256,4 +257,26 @@ test("applying and clearing a node scene manages annotation layers and preserves
   assert.equal(map.getLayer("seg-05-line").paint["line-opacity"], 1);
   assert.equal(map.getLayer("seg-02-line").paint["line-opacity"], 1);
   assert.equal(map.getLayer("seg-04a-cand").paint["line-opacity"], 0.95);
+});
+
+test("learning emphasis retunes route and evidence paint without touching scene membership", () => {
+  const scene = sceneForNode("node-05");
+  assert.ok(scene);
+  const map = makeFakeMap();
+
+  applyNodeScene(map, scene);
+  const baseCandidateOpacity = map.getLayer("seg-04a-cand").paint["line-opacity"];
+  const baseContextOpacity = map.getLayer("seg-05-line").paint["line-opacity"];
+
+  applyNodeSceneEmphasis(map, scene, "route");
+  assert.ok(map.getLayer("seg-04a-cand").paint["line-opacity"] > baseCandidateOpacity);
+  assert.ok(map.getLayer("seg-05-line").paint["line-opacity"] <= baseContextOpacity);
+
+  applyNodeSceneEmphasis(map, scene, "evidence");
+  assert.ok(map.getLayer(SCENE_BADGE_LAYER_ID).paint["circle-opacity"] > 0.88);
+  assert.ok(map.getLayer(SCENE_ANNOTATION_LAYER_ID).paint["text-opacity"] >= 1);
+
+  applyNodeSceneEmphasis(map, scene, null);
+  assert.equal(map.getLayer("seg-04a-cand").paint["line-opacity"], baseCandidateOpacity);
+  assert.equal(map.getSource(SCENE_ANNOTATION_SOURCE_ID).data.features.length, scene.annotations.length);
 });
