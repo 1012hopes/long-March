@@ -54,3 +54,22 @@
 
 - `node-08` 这类长标题在 `390x844` 下会自然换成三行，虽然没有遮挡，但会把正文起点继续往下推；如果后续还要磨移动端，可优先微调标题字号或行高，而不是继续压缩卡片间距。
 - 证据摘录与来源入口目前位于移动端首屏以下，顺序正确，但需要继续依赖滚动阅读；这是单列信息密度的可接受取舍。
+
+## Review follow-up（2026-09-04）
+
+- 新增 `app/src/map/learningEmphasisPaint.ts`，把 terrain/hydro emphasis 的底层 paint 复位逻辑做成独立 helper；`MapCanvas` 现在即使在同一次 render 中 `learningFocus` 关闭且 `nodeScene` 变为 `null`，也会先把离线地形和水系强调恢复到基础值，再退出 scene emphasis。
+- 路线 hover 不再在 `mouseleave` 时硬编码恢复到 `3.4`。`app/src/map/nodeScenePresentation.ts` 新增 scene-aware width helpers，当前若仍处于 learning scene，会按当前 `LearningEmphasis` 恢复 highlight/context/dim 对应宽度；若不在 scene 中，则回退到基础宽度。
+- 回归测试新增：
+  - `learning emphasis support paint resets to base when focus ends before a scene survives the render`
+  - `hover leave restores highlighted context and dim line widths for the active scene emphasis`
+- 这次 follow-up 没有视觉布局改动，因此沿用 Task 9 的截图与 `93/100` 视觉判断。
+
+## Review follow-up 验证
+
+- `npm run test:learning`：PASS（8 个断言通过）
+- `npm run test:scenes`：PASS（12 个断言通过）
+- `npm run test:loading`：PASS
+- `npm run test:timeline`：PASS
+- `npm run test:stories`：PASS
+- `npm run build`：PASS
+- `git diff --check`：PASS（仅 LF→CRLF 提示）

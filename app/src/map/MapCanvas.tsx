@@ -28,7 +28,10 @@ import {
   applyNodeScene,
   applyNodeSceneEmphasis,
   clearNodeScene,
+  hoverRouteLineWidth,
+  restoreHoveredRouteLineWidth,
 } from "./nodeScenePresentation";
+import { applyLearningEmphasisSupportPaint } from "./learningEmphasisPaint";
 import routeGeometry from "../data/route-geometry.json";
 import { nodes, epilogue } from "../data/nodes";
 import { stories } from "../data/stories";
@@ -406,7 +409,17 @@ export default function MapCanvas(props: Props) {
           if (!meta || !loadedMap.getLayer(layerId)) continue;
           loadedMap.on("mouseenter", layerId, () => {
             loadedMap.getCanvas().style.cursor = "pointer";
-            if (layerId.endsWith("-line")) loadedMap.setPaintProperty(layerId, "line-width", 5.2);
+            if (layerId.endsWith("-line")) {
+              loadedMap.setPaintProperty(
+                layerId,
+                "line-width",
+                hoverRouteLineWidth(
+                  propsRef.current.learningFocus ? propsRef.current.nodeScene : null,
+                  propsRef.current.learningFocus ? propsRef.current.learningEmphasis : null,
+                  line.segmentId
+                )
+              );
+            }
           });
           loadedMap.on("mousemove", layerId, (event) => {
             routePopup
@@ -425,7 +438,14 @@ export default function MapCanvas(props: Props) {
           loadedMap.on("mouseleave", layerId, () => {
             loadedMap.getCanvas().style.cursor = "";
             routePopup.remove();
-            if (layerId.endsWith("-line")) loadedMap.setPaintProperty(layerId, "line-width", 3.4);
+            if (layerId.endsWith("-line")) {
+              restoreHoveredRouteLineWidth(
+                loadedMap as unknown as SceneMapLike,
+                line.segmentId,
+                propsRef.current.learningFocus ? propsRef.current.nodeScene : null,
+                propsRef.current.learningFocus ? propsRef.current.learningEmphasis : null
+              );
+            }
           });
         }
 
@@ -664,47 +684,15 @@ export default function MapCanvas(props: Props) {
   useEffect(() => {
     const map = mapRef.current;
     const scene = props.learningFocus ? props.nodeScene : null;
-    if (!map || !ready || !scene) return;
+    if (!map || !ready) return;
 
+    applyLearningEmphasisSupportPaint(
+      map as unknown as SceneMapLike,
+      props.learningFocus ? props.learningEmphasis : null,
+      MAP_LAYER_IDS.terrain
+    );
+    if (!scene) return;
     applyNodeSceneEmphasis(map as unknown as SceneMapLike, scene, props.learningEmphasis);
-
-    const terrainColorOpacity =
-      props.learningEmphasis === "terrain" ? 0.44 : props.learningEmphasis === "route" ? 0.28 : 0.34;
-    const terrainReliefOpacity =
-      props.learningEmphasis === "terrain" ? 0.54 : props.learningEmphasis === "route" ? 0.31 : 0.38;
-    for (const layerId of MAP_LAYER_IDS.terrain) {
-      if (!map.getLayer(layerId)) continue;
-      map.setPaintProperty(
-        layerId,
-        "raster-opacity",
-        layerId === "offline-terrain-color" ? terrainColorOpacity : terrainReliefOpacity
-      );
-    }
-
-    if (map.getLayer(NODE_HYDROGRAPHY_LINE_LAYER_ID)) {
-      map.setPaintProperty(
-        NODE_HYDROGRAPHY_LINE_LAYER_ID,
-        "line-opacity",
-        props.learningEmphasis === "terrain" ? 1 : props.learningEmphasis === "route" ? 0.68 : 0.9
-      );
-      map.setPaintProperty(
-        NODE_HYDROGRAPHY_LINE_LAYER_ID,
-        "line-width",
-        props.learningEmphasis === "terrain" ? ["case", ["==", ["get", "prominence"], "focus"], 3.5, 2.5] : ["case", ["==", ["get", "prominence"], "focus"], 3.1, 2.2]
-      );
-    }
-    if (map.getLayer(NODE_HYDROGRAPHY_POINT_LAYER_ID)) {
-      map.setPaintProperty(
-        NODE_HYDROGRAPHY_POINT_LAYER_ID,
-        "circle-opacity",
-        props.learningEmphasis === "terrain" ? 0.98 : props.learningEmphasis === "route" ? 0.72 : 0.9
-      );
-      map.setPaintProperty(
-        NODE_HYDROGRAPHY_POINT_LAYER_ID,
-        "circle-radius",
-        props.learningEmphasis === "terrain" ? ["case", ["==", ["get", "prominence"], "focus"], 6.8, 5] : ["case", ["==", ["get", "prominence"], "focus"], 6.2, 4.6]
-      );
-    }
   }, [props.learningFocus, props.learningEmphasis, props.nodeScene, ready]);
 
   useEffect(() => {

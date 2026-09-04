@@ -8,6 +8,13 @@ export const SCENE_BADGE_LAYER_ID = "node-scene-badges";
 export const SCENE_ANNOTATION_LAYER_ID = "node-scene-labels";
 
 type RouteSceneRole = "highlight" | "context" | "dim";
+type RouteScenePaint = {
+  candidateOpacity: number;
+  corridorOpacity: number;
+  corridorWidth: number;
+  lineOpacity: number;
+  lineWidth: number;
+};
 
 export type SceneMapLike = {
   addLayer: (layer: unknown, beforeId?: string) => unknown;
@@ -28,10 +35,7 @@ const SCENE_COLORS = {
   evidenceBlue: "#315E78",
 } as const;
 
-const ROUTE_ROLE_PAINT: Record<
-  RouteSceneRole,
-  { candidateOpacity: number; corridorOpacity: number; corridorWidth: number; lineOpacity: number; lineWidth: number }
-> = {
+const ROUTE_ROLE_PAINT: Record<RouteSceneRole, RouteScenePaint> = {
   highlight: {
     candidateOpacity: 0.95,
     corridorOpacity: 0.3,
@@ -57,10 +61,7 @@ const ROUTE_ROLE_PAINT: Record<
 
 const EMPHASIS_ROUTE_PAINT: Record<
   Exclude<LearningEmphasis, null>,
-  Record<
-    RouteSceneRole,
-    { candidateOpacity: number; corridorOpacity: number; corridorWidth: number; lineOpacity: number; lineWidth: number }
-  >
+  Record<RouteSceneRole, RouteScenePaint>
 > = {
   route: {
     highlight: {
@@ -286,6 +287,15 @@ export function routeSceneRole(segmentId: string, scene: NodeMapScene): RouteSce
   return "dim";
 }
 
+function routePaintForRole(role: RouteSceneRole, emphasis: LearningEmphasis): RouteScenePaint {
+  return emphasis ? EMPHASIS_ROUTE_PAINT[emphasis][role] : ROUTE_ROLE_PAINT[role];
+}
+
+export function routePaintForSegment(segmentId: string, scene: NodeMapScene | null, emphasis: LearningEmphasis): RouteScenePaint {
+  if (!scene) return BASE_ROUTE_PAINT;
+  return routePaintForRole(routeSceneRole(segmentId, scene), emphasis);
+}
+
 export function annotationPresentation(annotation: NodeMapScene["annotations"][number]) {
   const certaintyPrefix =
     annotation.certainty === "approximate"
@@ -351,12 +361,11 @@ export function applyNodeScene(map: SceneMapLike, scene: NodeMapScene): void {
 }
 
 export function applyNodeSceneEmphasis(map: SceneMapLike, scene: NodeMapScene, emphasis: LearningEmphasis): void {
-  const routePaints = emphasis ? EMPHASIS_ROUTE_PAINT[emphasis] : ROUTE_ROLE_PAINT;
   const scenePaint = emphasis ? SCENE_PAINT[emphasis] : SCENE_PAINT.base;
   ensureSceneLayers(map, scene);
 
   for (const line of routeGeometry) {
-    const role = routePaints[routeSceneRole(line.segmentId, scene)];
+    const role = routePaintForSegment(line.segmentId, scene, emphasis);
     const isCandidate = line.id.endsWith("a") || line.id.endsWith("b");
     if (isCandidate) {
       map.setPaintProperty(`${line.id}-cand`, "line-opacity", role.candidateOpacity);
@@ -376,6 +385,20 @@ export function applyNodeSceneEmphasis(map: SceneMapLike, scene: NodeMapScene, e
     ["case", ["==", ["get", "certainty"], "approximate"], scenePaint.approxRadius, scenePaint.confirmedRadius]
   );
   map.setPaintProperty(SCENE_ANNOTATION_LAYER_ID, "text-opacity", scenePaint.textOpacity);
+}
+
+export function hoverRouteLineWidth(scene: NodeMapScene | null, emphasis: LearningEmphasis, segmentId: string): number {
+  return Math.max(routePaintForSegment(segmentId, scene, emphasis).lineWidth, 5.2);
+}
+
+export function restoreHoveredRouteLineWidth(
+  map: SceneMapLike,
+  segmentId: string,
+  scene: NodeMapScene | null,
+  emphasis: LearningEmphasis
+): void {
+  const paint = routePaintForSegment(segmentId, scene, emphasis);
+  map.setPaintProperty(`${segmentId}-line`, "line-width", paint.lineWidth);
 }
 
 export function clearNodeScene(map: SceneMapLike): void {

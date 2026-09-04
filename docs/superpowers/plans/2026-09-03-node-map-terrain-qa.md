@@ -273,3 +273,24 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 - 主要差异：桌面端右栏不再留下大块空白，主叙事与证据的阅读职责分开得更清楚；node-05 / node-08 的路线 certainty、地形 cue、海拔摘要和证据摘录都能在一屏内形成有效对照。
 - 移动端结论：`390x844` 下无横向裁切，修复后不再出现 cartouche 压住 panel 标题的问题；node-08 的长标题会自然换行，但仍处于可读范围。
 - 余留观察：移动端首屏主要展示 header + emphasis + narrative 开头，证据摘录与 stories/source 入口需要继续向下滚动，这是单列布局下的可接受取舍。
+
+## Task 9 review follow-up（2026-09-04）
+
+- Review 指出的两个真实问题都成立：
+  - terrain / hydro emphasis 的 reset 之前绑在 `scene !== null` 的 effect 上；若 learning focus 结束时 scene 在同次 render 中已变成 `null`，底图与水系可能保留旧强调值。
+  - route hover 的 `mouseleave` 之前总是把 line width 写回全局 `3.4`，会覆盖 learning scene 当前的 highlight/context/dim 宽度。
+- 新增 `app/src/map/learningEmphasisPaint.ts`，把 terrain/hydro emphasis 支持层的 paint 应用与 base reset 收敛成纯函数；`MapCanvas` 现在无论 scene 是否还存在，都会先调用这个 helper，把离线 terrain raster opacity 与 hydro line/point paint 恢复到正确状态。
+- `app/src/map/nodeScenePresentation.ts` 新增 route-width helpers：当前 hover 进入时使用 `max(sceneWidth, 5.2)`，离开时则按当前 `scene + LearningEmphasis` 恢复实际 line width，而不是退回全局默认值。
+- `app/scripts/learning-focus.test.mjs` 新增 reset regression，直接验证 “focus 结束且 scene 不存活” 时 terrain/hydro paint 会回到 base。
+- `app/scripts/node-scenes.test.mjs` 新增 hover-leave regression，覆盖 active `route` emphasis 下 highlight/context/dim 三类 line width 的恢复。
+- 这次 follow-up 没有改动 Task 9 的布局或截图结论；视觉输出沿用前一轮 `93/100`。
+
+## Task 9 review follow-up 验证证据
+
+- `npm run test:learning`：PASS（8 个断言通过，新增 emphasis reset 回归）
+- `npm run test:scenes`：PASS（12 个断言通过，新增 hover-leave width 恢复回归）
+- `npm run test:loading`：PASS（21 个断言通过）
+- `npm run test:timeline`：PASS（13 个断言通过）
+- `npm run test:stories`：PASS（8 个断言通过）
+- `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-CkFaISZv.css` gzip `21.98 kB`，`dist/assets/index-Cw_MuPSH.js` gzip `405.36 kB`）
+- `git diff --check`：PASS（无空白错误；仅 LF→CRLF 提示）

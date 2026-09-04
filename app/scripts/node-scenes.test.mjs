@@ -10,6 +10,8 @@ import {
   SCENE_ANNOTATION_SOURCE_ID,
   SCENE_BADGE_LAYER_ID,
   applyNodeSceneEmphasis,
+  hoverRouteLineWidth,
+  restoreHoveredRouteLineWidth,
   annotationPresentation,
   applyNodeScene,
   clearNodeScene,
@@ -279,4 +281,24 @@ test("learning emphasis retunes route and evidence paint without touching scene 
   applyNodeSceneEmphasis(map, scene, null);
   assert.equal(map.getLayer("seg-04a-cand").paint["line-opacity"], baseCandidateOpacity);
   assert.equal(map.getSource(SCENE_ANNOTATION_SOURCE_ID).data.features.length, scene.annotations.length);
+});
+
+test("hover leave restores highlighted context and dim line widths for the active scene emphasis", () => {
+  const scene = sceneForNode("node-07");
+  assert.ok(scene);
+  const map = makeFakeMap();
+
+  applyNodeSceneEmphasis(map, scene, "route");
+
+  map.setPaintProperty("seg-06-line", "line-width", hoverRouteLineWidth(scene, "route", "seg-06"));
+  map.setPaintProperty("seg-05-line", "line-width", hoverRouteLineWidth(scene, "route", "seg-05"));
+  map.setPaintProperty("seg-02-line", "line-width", hoverRouteLineWidth(scene, "route", "seg-02"));
+
+  restoreHoveredRouteLineWidth(map, "seg-06", scene, "route");
+  restoreHoveredRouteLineWidth(map, "seg-05", scene, "route");
+  restoreHoveredRouteLineWidth(map, "seg-02", scene, "route");
+
+  assert.equal(map.getLayer("seg-06-line").paint["line-width"], 5.4);
+  assert.equal(map.getLayer("seg-05-line").paint["line-width"], 2.45);
+  assert.equal(map.getLayer("seg-02-line").paint["line-width"], 1.85);
 });

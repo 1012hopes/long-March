@@ -9,6 +9,27 @@ import {
   shouldHideMarkerForLearning,
 } from "../src/layout/rightPanelPresentation.ts";
 import { buildNodeEvidenceRailModel } from "../src/components/nodeLearning.ts";
+import {
+  applyLearningEmphasisSupportPaint,
+  DEFAULT_TERRAIN_LAYER_IDS,
+} from "../src/map/learningEmphasisPaint.ts";
+
+function makePaintMap() {
+  const layers = new Map();
+  for (const id of [...DEFAULT_TERRAIN_LAYER_IDS, "node-hydrography-line", "node-hydrography-point"]) {
+    layers.set(id, { id, paint: {} });
+  }
+  return {
+    getLayer(id) {
+      return layers.get(id);
+    },
+    setPaintProperty(id, name, value) {
+      const layer = layers.get(id);
+      if (!layer) return;
+      layer.paint[name] = value;
+    },
+  };
+}
 
 test("node learning view becomes an immersive 45/55 map and reading split", () => {
   assert.deepEqual(getRightPanelPresentation("node"), {
@@ -116,4 +137,28 @@ test("node learning panel exposes desktop split structure, mobile collapse rules
   assert.match(cssText, /\.node-learning-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*2\.1fr\)\s+minmax\(240px,\s*0\.9fr\)/);
   assert.match(cssText, /@media \(max-width: 900px\)[\s\S]*\.node-learning-grid\s*\{[\s\S]*grid-template-columns:\s*1fr/);
   assert.match(cssText, /@media \(max-width: 900px\)[\s\S]*\.app\.learning-focus \.node-scene-cartouche\s*\{[\s\S]*display:\s*none/);
+});
+
+test("learning emphasis support paint resets to base when focus ends before a scene survives the render", () => {
+  const map = makePaintMap();
+
+  applyLearningEmphasisSupportPaint(map, "terrain");
+  assert.equal(map.getLayer("offline-terrain-color").paint["raster-opacity"], 0.44);
+  assert.equal(map.getLayer("offline-terrain-relief").paint["raster-opacity"], 0.54);
+  assert.equal(map.getLayer("node-hydrography-line").paint["line-opacity"], 1);
+  assert.equal(map.getLayer("node-hydrography-point").paint["circle-opacity"], 0.98);
+
+  applyLearningEmphasisSupportPaint(map, null);
+  assert.equal(map.getLayer("offline-terrain-color").paint["raster-opacity"], 0.34);
+  assert.equal(map.getLayer("offline-terrain-relief").paint["raster-opacity"], 0.38);
+  assert.equal(map.getLayer("node-hydrography-line").paint["line-opacity"], 0.9);
+  assert.deepEqual(
+    map.getLayer("node-hydrography-line").paint["line-width"],
+    ["case", ["==", ["get", "prominence"], "focus"], 3.1, 2.2]
+  );
+  assert.equal(map.getLayer("node-hydrography-point").paint["circle-opacity"], 0.9);
+  assert.deepEqual(
+    map.getLayer("node-hydrography-point").paint["circle-radius"],
+    ["case", ["==", ["get", "prominence"], "focus"], 6.2, 4.6]
+  );
 });
