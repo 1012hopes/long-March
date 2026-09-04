@@ -212,6 +212,16 @@ body {
   color: #4b4f49;
 }
 
+.map-scene-annotation.crossing.approximate .map-scene-annotation-badge {
+  background: rgba(252, 250, 245, 0.95);
+  color: var(--evidence-blue);
+  box-shadow: 0 0 0 3px rgba(86, 89, 82, 0.12);
+}
+
+.map-scene-annotation.crossing.approximate .map-scene-annotation-label {
+  border-color: rgba(86, 89, 82, 0.42);
+}
+
 .map-scene-annotation.origin .map-scene-annotation-badge,
 .map-scene-annotation.destination .map-scene-annotation-badge,
 .map-scene-annotation.crossing .map-scene-annotation-badge,
@@ -3402,6 +3412,42 @@ summary:focus-visible {
     -1px -1px 0 rgba(242, 238, 228, 0.9),
     1px 1px 0 rgba(242, 238, 228, 0.9),
     0 0 8px var(--paper-light);
+}
+
+.hydro-label {
+  opacity: 0.94;
+  transition: opacity 180ms ease, transform 180ms ease;
+  pointer-events: none;
+}
+
+.hydro-label.river {
+  color: #3f6a84;
+  font-family: var(--serif);
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-shadow:
+    -1px 0 rgba(252, 250, 245, 0.94),
+    1px 0 rgba(252, 250, 245, 0.94),
+    0 0 6px var(--paper-light);
+}
+
+.hydro-label.mountain {
+  color: rgba(62, 66, 56, 0.84);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-shadow:
+    -1px -1px 0 rgba(242, 238, 228, 0.9),
+    1px 1px 0 rgba(242, 238, 228, 0.9),
+    0 0 8px var(--paper-light);
+}
+
+.hydro-label.approximate {
+  opacity: 0.86;
+  text-decoration: underline dotted rgba(86, 89, 82, 0.45);
+  text-underline-offset: 3px;
 }
 
 .sub-name {

@@ -38,10 +38,15 @@ async function loadStyleModule() {
     readFile(stylePath, "utf8"),
     readFile(routeGeometryPath, "utf8"),
   ]);
-  const patchedStyle = styleText.replace(
-    'import routeGeometry from "../data/route-geometry.json";',
-    "const routeGeometry = " + routeGeometryText + ";"
-  );
+  const patchedStyle = styleText
+    .replace(
+      'import routeGeometry from "../data/route-geometry.json";',
+      "const routeGeometry = " + routeGeometryText + ";"
+    )
+    .replace(
+      /import \{\r?\n  NODE_HYDROGRAPHY_LINE_LAYER_ID,\r?\n  NODE_HYDROGRAPHY_POINT_LAYER_ID,\r?\n  NODE_HYDROGRAPHY_SOURCE_ID,\r?\n\} from "\.\.\/data\/nodeHydrography";/,
+      'const NODE_HYDROGRAPHY_LINE_LAYER_ID = "node-hydrography-line";\nconst NODE_HYDROGRAPHY_POINT_LAYER_ID = "node-hydrography-point";\nconst NODE_HYDROGRAPHY_SOURCE_ID = "node-hydrography";'
+    );
   return importTranspiledModule("style.mjs", patchedStyle);
 }
 
@@ -180,6 +185,7 @@ test("base style removes online DEM and contour sources from first paint", async
   );
   assert.ok(!sourceIds.includes("terrainDem"));
   assert.ok(!sourceIds.includes("terrainColorDem"));
+  assert.ok(sourceIds.includes("node-hydrography"));
   assert.ok(!sourceIds.includes("contourMajor"));
   assert.ok(!sourceIds.includes("contourMid"));
   assert.ok(!sourceIds.includes("contourFine"));
@@ -188,6 +194,9 @@ test("base style removes online DEM and contour sources from first paint", async
   assert.ok(!layerIds.includes("contour-major"));
   assert.ok(!layerIds.includes("contour-mid"));
   assert.ok(!layerIds.includes("contour-fine"));
+  assert.ok(layerIds.includes("node-hydrography-line"));
+  assert.ok(layerIds.includes("node-hydrography-point"));
+  assert.deepEqual(style.sources["node-hydrography"].data, { type: "FeatureCollection", features: [] });
 });
 
 test("local terrain rasters are wired into the base style when bbox metadata is available", async () => {
@@ -232,6 +241,9 @@ test("local terrain rasters are wired into the base style when bbox metadata is 
   assert.ok(layers.indexOf("offline-terrain-relief") < layers.indexOf("coastline-overlay"));
   assert.ok(layers.indexOf("offline-terrain-relief") < layers.indexOf("lakes-fill"));
   assert.ok(layers.indexOf("offline-terrain-relief") < layers.indexOf("rivers-line"));
+  assert.ok(layers.indexOf("rivers-line") < layers.indexOf("node-hydrography-line"));
+  assert.ok(layers.indexOf("node-hydrography-line") < layers.indexOf("node-hydrography-point"));
+  assert.ok(layers.indexOf("node-hydrography-point") < layers.indexOf("seg-01-corridor"));
   assert.ok(layers.indexOf("offline-terrain-relief") < layers.indexOf("seg-01-corridor"));
   assert.ok(!layers.includes("contour-major"));
   assert.ok(!layers.includes("contour-mid"));

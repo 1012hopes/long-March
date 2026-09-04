@@ -168,3 +168,25 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 - `npm run test:stories`：PASS（8 个断言通过）。
 - `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-BP59p3ZA.js` gzip 397.68 kB）。
 - `git diff --check`：PASS（仅有 Git 的 LF→CRLF 提示）。
+
+## Task 7 结果（关键水系与山地表达）
+
+- `app/src/data/nodeHydrography.ts` 新增九个教学节点的水系/山地子集，六条关键水系分别落在 `node-01/02/03/05/06/07`，并为 `node-08` 保留夹金山与雪山语义。
+- 水系表达分为两层：`node-hydrography-line` 负责 `金沙江`、`大渡河` 等可确认线段，`node-hydrography-point` 负责其余源据不足时的源背书点位/面状替代。
+- `annotationPresentation()` 现在对 approximate crossing 使用“约略渡口”措辞与 `渡` 形 glyph，保持可访问命名与视觉语义一致。
+- `MapCanvas` 在学习焦点下按当前节点注入/清空水系数据源，并仅在标签开关开启时渲染水系与山地标签。
+- `style.ts` 将水系层插入在基础水体之后、路线之前，确保证据蓝不压过路线红，也不盖住 scene cartouche。
+- `app/scripts/hydrography.test.mjs` 覆盖关键水系、来源/裁切边界、近似渡口文案，以及图层层级契约；`app/scripts/map-loading.test.mjs` 追加水系源/层基线断言。
+
+## Task 7 视觉证据
+
+- 截图：`.omx/screenshots/node-map-terrain/task7/node-01-1440x900.png`
+- 截图：`.omx/screenshots/node-map-terrain/task7/node-02-1440x900.png`
+- 截图：`.omx/screenshots/node-map-terrain/task7/node-05-1440x900.png`
+- 截图：`.omx/screenshots/node-map-terrain/task7/node-07-1440x900.png`
+- 截图：`.omx/screenshots/node-map-terrain/task7/node-08-1440x900.png`
+- 截图：`.omx/screenshots/node-map-terrain/task7/node-05-390x844.png`
+- 截图：`.omx/screenshots/node-map-terrain/task7/node-08-390x844.png`
+- 视觉评分：94/100
+- 主要差异：关键水系现在能直接读出于都河、湘江、乌江、赤水河、金沙江与大渡河；node-08 也补上了夹金山/雪山的山地表达。
+- 余留观察：390px 的 node-08 学习视图仍略紧，后续若再精修，可只微调移动端学习卡顶部留白。

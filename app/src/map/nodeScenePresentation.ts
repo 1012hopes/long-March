@@ -201,7 +201,12 @@ export function routeSceneRole(segmentId: string, scene: NodeMapScene): RouteSce
 }
 
 export function annotationPresentation(annotation: NodeMapScene["annotations"][number]) {
-  const certaintyPrefix = annotation.certainty === "approximate" ? "约略位置，" : "";
+  const certaintyPrefix =
+    annotation.certainty === "approximate"
+      ? annotation.kind === "crossing"
+        ? "约略渡口，"
+        : "约略位置，"
+      : "";
   return {
     glyph: KIND_GLYPHS[annotation.kind],
     ariaLabel: `${annotation.label}，${certaintyPrefix}${KIND_LABELS[annotation.kind]}标注`,

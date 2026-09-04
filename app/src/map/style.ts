@@ -1,5 +1,10 @@
 // 纸面档案风格 MapLibre 样式（docs/15 视觉规范色板）
 import type { StyleSpecification } from "maplibre-gl";
+import {
+  NODE_HYDROGRAPHY_LINE_LAYER_ID,
+  NODE_HYDROGRAPHY_POINT_LAYER_ID,
+  NODE_HYDROGRAPHY_SOURCE_ID,
+} from "../data/nodeHydrography";
 import routeGeometry from "../data/route-geometry.json";
 
 export const C = {
@@ -37,7 +42,7 @@ export const ROUTE_LAYER_IDS = routeGeometry.flatMap((line) =>
 export const MAP_LAYER_IDS: Record<MapLayerKey, string[]> = {
   terrain: ["offline-terrain-color", "offline-terrain-relief"],
   contours: ["contour-major", "contour-mid", "contour-fine"],
-  water: ["lakes-fill", "rivers-line"],
+  water: ["lakes-fill", "rivers-line", NODE_HYDROGRAPHY_LINE_LAYER_ID, NODE_HYDROGRAPHY_POINT_LAYER_ID],
   route: ROUTE_LAYER_IDS,
 };
 
@@ -86,6 +91,10 @@ export function buildStyle(hillshade: HillshadeBbox | null): StyleSpecification 
     land: { type: "geojson", data: "geo/land.json" },
     rivers: { type: "geojson", data: "geo/rivers.json" },
     lakes: { type: "geojson", data: "geo/lakes.json" },
+    [NODE_HYDROGRAPHY_SOURCE_ID]: {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    },
     graticule: { type: "geojson", data: graticule() },
   };
 
@@ -211,6 +220,40 @@ export function buildStyle(hillshade: HillshadeBbox | null): StyleSpecification 
           9,
           ["interpolate", ["linear"], ["get", "scalerank"], 3, 4.2, 7, 1.15]
         ],
+      },
+    }
+  );
+
+  layers.push(
+    {
+      id: NODE_HYDROGRAPHY_LINE_LAYER_ID,
+      type: "line",
+      source: NODE_HYDROGRAPHY_SOURCE_ID,
+      filter: ["==", ["get", "kind"], "river-line"],
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: {
+        "line-color": C.evidenceBlue,
+        "line-width": ["case", ["==", ["get", "prominence"], "focus"], 3.1, 2.2],
+        "line-opacity": ["case", ["==", ["get", "prominence"], "focus"], 0.96, 0.78],
+      },
+    },
+    {
+      id: NODE_HYDROGRAPHY_POINT_LAYER_ID,
+      type: "circle",
+      source: NODE_HYDROGRAPHY_SOURCE_ID,
+      filter: ["!=", ["get", "kind"], "river-line"],
+      paint: {
+        "circle-color": [
+          "match",
+          ["get", "kind"],
+          "mountain",
+          C.terrain,
+          C.evidenceBlue,
+        ],
+        "circle-radius": ["case", ["==", ["get", "prominence"], "focus"], 6.2, 4.6],
+        "circle-stroke-color": C.paperLight,
+        "circle-stroke-width": 1.4,
+        "circle-opacity": 0.9,
       },
     }
   );

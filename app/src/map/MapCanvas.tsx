@@ -4,6 +4,11 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { buildStyle, MAP_LAYER_IDS, probeHillshade } from "./style";
 import type { NodeMapScene } from "../data/nodeScenes";
 import {
+  emptyNodeHydrography,
+  NODE_HYDROGRAPHY_SOURCE_ID,
+  sceneHydrography,
+} from "../data/nodeHydrography";
+import {
   cancelOnlineTerrain,
   ensureDetailContours,
   ensureMajorContours,
@@ -124,6 +129,7 @@ export default function MapCanvas(props: Props) {
   const markerRefs = useRef<Map<string, { el: HTMLDivElement; mapMarker: maplibregl.Marker }>>(new Map());
   const storyRefs = useRef<Map<string, { el: HTMLDivElement; mapMarker: maplibregl.Marker }>>(new Map());
   const sceneAnnotationRefs = useRef<maplibregl.Marker[]>([]);
+  const hydroLabelRefs = useRef<maplibregl.Marker[]>([]);
   const secondaryRefs = useRef<HTMLDivElement[]>([]);
   const geoRefs = useRef<HTMLDivElement[]>([]);
   const contourLabelRefs = useRef<HTMLDivElement[]>([]);
@@ -139,6 +145,11 @@ export default function MapCanvas(props: Props) {
   const clearSceneAnnotations = () => {
     for (const marker of sceneAnnotationRefs.current) marker.remove();
     sceneAnnotationRefs.current = [];
+  };
+
+  const clearHydroLabels = () => {
+    for (const marker of hydroLabelRefs.current) marker.remove();
+    hydroLabelRefs.current = [];
   };
 
   const setSceneTransitions = (map: MlMap, duration: number) => {
@@ -494,6 +505,7 @@ export default function MapCanvas(props: Props) {
       geoRefs.current = [];
       contourLabelRefs.current = [];
       clearSceneAnnotations();
+      clearHydroLabels();
     };
   }, []);
 
@@ -644,6 +656,30 @@ export default function MapCanvas(props: Props) {
       rec.el.classList.toggle("hidden", !props.layers.stories);
     }
   }, [props.selectedStoryId, props.layers.stories, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const hydroSource = map.getSource(NODE_HYDROGRAPHY_SOURCE_ID) as
+      | { setData?: (data: GeoJSON.FeatureCollection) => void }
+      | undefined;
+    const hydro = props.learningFocus && props.nodeScene ? sceneHydrography(props.nodeScene) : emptyNodeHydrography();
+    hydroSource?.setData?.(hydro.featureCollection);
+
+    clearHydroLabels();
+    if (!props.learningFocus || !props.layers.labels) return;
+
+    for (const label of hydro.labels) {
+      const el = makeMarker(`hydro-label ${label.kind} ${label.certainty}`, label.label);
+      el.setAttribute("role", "img");
+      el.setAttribute("aria-label", label.ariaLabel);
+      el.style.pointerEvents = "none";
+      const marker = new maplibregl.Marker({ element: el, anchor: "center", offset: label.offset })
+        .setLngLat(label.location)
+        .addTo(map);
+      hydroLabelRefs.current.push(marker);
+    }
+  }, [props.learningFocus, props.layers.labels, props.nodeScene, ready]);
 
   useEffect(() => {
     const map = mapRef.current;
