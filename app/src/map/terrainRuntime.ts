@@ -27,6 +27,8 @@ export type OnlineTerrainResult = "ready" | "offline" | "cancelled";
 type OnlineTerrainSourceEvent = {
   sourceId?: string;
   isSourceLoaded?: boolean;
+  sourceDataType?: string;
+  coord?: unknown;
 };
 
 type OnlineTerrainErrorEvent = {
@@ -46,6 +48,7 @@ const CONTOUR_INSERT_BEFORE = "graticule";
 const DETAIL_CONTOUR_ZOOM = 7.2;
 const FINE_CONTOUR_ZOOM = 8.5;
 const ONLINE_TERRAIN_TIMEOUT_MS = 1800;
+export const ONLINE_TERRAIN_PROBE_LAYER_ID = "terrain-dem-probe";
 
 const runtimeStates = new WeakMap<MlMap, RuntimeState>();
 
@@ -281,7 +284,14 @@ async function ensureContourLayer(
 function removeOnlineTerrainSource(map: MlMap) {
   withMapGuard(map, undefined, () => {
     if (map.getTerrain()) map.setTerrain(null);
+    if (map.getLayer(ONLINE_TERRAIN_PROBE_LAYER_ID)) map.removeLayer(ONLINE_TERRAIN_PROBE_LAYER_ID);
     if (map.getSource("terrainDem")) map.removeSource("terrainDem");
+  });
+}
+
+function removeOnlineTerrainProbe(map: MlMap) {
+  withMapGuard(map, undefined, () => {
+    if (map.getLayer(ONLINE_TERRAIN_PROBE_LAYER_ID)) map.removeLayer(ONLINE_TERRAIN_PROBE_LAYER_ID);
   });
 }
 
@@ -303,7 +313,8 @@ function finishPendingOnlineTerrain(
     map.off("sourcedata", pending.onSourceData);
     map.off("error", pending.onError);
   });
-  if (result !== "ready") removeOnlineTerrainSource(map);
+  if (result === "ready") removeOnlineTerrainProbe(map);
+  else removeOnlineTerrainSource(map);
   pending.resolve(result);
 }
 
@@ -357,7 +368,14 @@ export async function ensureOnlineTerrain(map: MlMap): Promise<OnlineTerrainResu
   let pending: PendingOnlineTerrain;
   const promise = new Promise<OnlineTerrainResult>((resolve) => {
     const onSourceData = (event: OnlineTerrainSourceEvent) => {
-      if (event.sourceId === "terrainDem" && event.isSourceLoaded) finishPendingOnlineTerrain(map, state, pending, "ready");
+      if (
+        event.sourceId === "terrainDem" &&
+        event.sourceDataType === "content" &&
+        event.coord &&
+        event.isSourceLoaded
+      ) {
+        finishPendingOnlineTerrain(map, state, pending, "ready");
+      }
     };
 
     const onError = (event: OnlineTerrainErrorEvent) => {
@@ -397,6 +415,25 @@ export async function ensureOnlineTerrain(map: MlMap): Promise<OnlineTerrainResu
       return promise;
     }
   }
+
+  withMapGuard(map, undefined, () => {
+    if (!map.getLayer(ONLINE_TERRAIN_PROBE_LAYER_ID)) {
+      map.addLayer(
+        {
+          id: ONLINE_TERRAIN_PROBE_LAYER_ID,
+          type: "hillshade",
+          source: "terrainDem",
+          paint: {
+            "hillshade-exaggeration": 0.01,
+            "hillshade-shadow-color": "rgba(0,0,0,0)",
+            "hillshade-highlight-color": "rgba(255,255,255,0)",
+            "hillshade-accent-color": "rgba(0,0,0,0)",
+          },
+        },
+        "graticule"
+      );
+    }
+  });
 
   pending!.timeoutId = setTimeout(() => finishPendingOnlineTerrain(map, state, pending!, "offline"), ONLINE_TERRAIN_TIMEOUT_MS);
   return promise;

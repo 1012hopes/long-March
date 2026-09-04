@@ -6,6 +6,7 @@ import {
   NODE_HYDROGRAPHY_SOURCE_ID,
 } from "../data/nodeHydrography";
 import routeGeometry from "../data/route-geometry.json";
+import { NODE_TERRAIN_COLOR_LAYER_ID, NODE_TERRAIN_RELIEF_LAYER_ID } from "./nodeTerrainRuntime";
 
 export const C = {
   paper: "#F2EEE4",
@@ -40,7 +41,12 @@ export const ROUTE_LAYER_IDS = routeGeometry.flatMap((line) =>
 );
 
 export const MAP_LAYER_IDS: Record<MapLayerKey, string[]> = {
-  terrain: ["offline-terrain-color", "offline-terrain-relief"],
+  terrain: [
+    "offline-terrain-color",
+    "offline-terrain-relief",
+    NODE_TERRAIN_COLOR_LAYER_ID,
+    NODE_TERRAIN_RELIEF_LAYER_ID,
+  ],
   contours: ["contour-major", "contour-mid", "contour-fine"],
   water: ["lakes-fill", "rivers-line", NODE_HYDROGRAPHY_LINE_LAYER_ID, NODE_HYDROGRAPHY_POINT_LAYER_ID],
   route: ROUTE_LAYER_IDS,

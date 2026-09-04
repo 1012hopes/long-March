@@ -63,7 +63,7 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 
 ## Task 2 验证证据
 
-- `npm run test:loading`：PASS（4 个断言通过，1 个 Task 3 TODO 保留）。
+- `npm run test:loading`：PASS（4 个断言通过，1 个 Task 3 待实现契约保留）。
 - `npm run test:stories`：PASS（8 个断言通过）。
 - `npm run test:map`：PASS（2 个断言通过）。
 - `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-DNGvmrT_.js` gzip 392.83 kB）。
@@ -259,6 +259,44 @@ Task 1 未新增浏览器自动化依赖，因此本轮只固化可复用的手�
 - `npm run test:stories`：PASS（8 个断言通过）。
 - `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-CkFaISZv.css` gzip `21.98 kB`，`dist/assets/index-CGNRr6w6.js` gzip `405.13 kB`）。
 - `git diff --check`：PASS（无空白错误；仅 LF→CRLF 提示）。
+
+## Task 10 最终集成（2026-09-04）
+
+### 节点局部地形运行时接入
+
+- 新增 `app/src/map/nodeTerrainRuntime.ts`，manifest 只读取一次；节点学习按 `nodeId` 加载对应 tint/hillshade。
+- 两个节点局部 raster 位于全局离线地形之上、水系与路线之下；退出或切换节点时清理旧 source/layer。
+- 异步加载使用每地图 request token；快速切换或关闭节点后，过期 manifest 结果不会重新写回地图。
+- manifest 或节点资源缺失时返回 `missing` 并保留全局离线地形，不阻断节点学习。
+- 节点学习隐藏全局等高线，避免高山节点的线网纹理压过路线与山河；退出学习后按图层开关恢复。
+
+### 浏览器证据
+
+使用本机 Microsoft Edge + Playwright 采集 `.omx/screenshots/node-map-terrain/task10/`：
+
+- 390×844：自由地图、node-01、node-05、node-08 与加载后断网 node-05；
+- 1280×720：自由地图、node-05；
+- 1440×900：自由地图、node-01、node-05、node-08；
+- 1920×1080：node-01、node-05。
+
+所有视口均满足 `document.scrollWidth === innerWidth`，地图 canvas 与预期面板存在，未捕获未处理页面异常。节点页面请求中，本地 `terrain/nodes/manifest.json` 与对应 tint/hillshade 均先于在线 DEM 请求出现；在线 DEM 只在地图稳定后后台预取，不阻塞首屏。页面完成加载后切换浏览器离线，node-05 地图、路线、标注与阅读内容保持可见。
+
+DEM 失败场景在 390×844 下拦截了 9 次 Terrarium 瓦片请求：按钮从“3D 地形”进入“3D 离线/重试”，本地节点地形和正文持续可见，未出现页面异常。运行时使用透明 hillshade 探针触发真实 DEM 瓦片请求；只有收到带 tile coordinate 的 content 事件才判定 ready，source 元数据本身不再误判为 3D 可用。
+
+### 最终视觉复核
+
+- 独立视觉评分：93/100，结论 `pass`；六个维度均达到各自 85% 门槛。
+- 当前节点与叙事焦点：24/25；地形/水系/路线：18/20；版式与留白：18/20；一致性：14/15；动效静态代理：9/10；移动端与无障碍：10/10。
+- node-08 在修复运行时等高线可见性后，从灰色线网恢复为清晰的山脊/河谷地形；node-05 的候选路线降低权重但保留争议虚线语义；移动端学习页只保留故事、3D 与说明三项工具，地图空间更稳定。
+- 剩余视觉改进属于非阻塞精修：水系仍比路线克制；node-08 手机画面右下路线仍较醒目；离线状态主要由 3D 按钮反馈，而不是改变地图外观。
+
+### 仍未完成的外部/硬件证据
+
+- 尚未证明关闭浏览器缓存后的断网刷新；项目还没有完整 Service Worker/PWA 离线壳；
+- 尚未在低性能安卓真机量化地图平移/时间拖动帧率；
+- 1280×720 仅完成浏览器视口截图，未完成真实投影距离观看；
+- 天地图、坐标系和地图审核仍未通过外部门禁；
+- 当前生产 JS 约 406KB gzip，高于 300KB 性能预算。
 
 ## Task 9 视觉证据
 

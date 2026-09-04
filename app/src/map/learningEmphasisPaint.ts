@@ -31,7 +31,7 @@ export function applyLearningEmphasisSupportPaint(
     map.setPaintProperty(
       layerId,
       "raster-opacity",
-      layerId === "offline-terrain-color" ? terrainColorOpacity : terrainReliefOpacity
+      layerId.endsWith("terrain-color") ? terrainColorOpacity : terrainReliefOpacity
     );
   }
 

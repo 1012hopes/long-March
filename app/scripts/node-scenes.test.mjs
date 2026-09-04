@@ -247,7 +247,7 @@ test("applying and clearing a node scene manages annotation layers and preserves
 
   assert.equal(map.getLayer("seg-04a-cand").paint["line-color"], "#765B78");
   assert.deepEqual(map.getLayer("seg-04a-cand").paint["line-dasharray"], [2, 2.2]);
-  assert.equal(map.getLayer("seg-04a-cand").paint["line-opacity"], 0.95);
+  assert.equal(map.getLayer("seg-04a-cand").paint["line-opacity"], 0.72);
   assert.equal(map.getLayer("seg-05-line").paint["line-opacity"], 0.24);
   assert.equal(map.getLayer("seg-02-line").paint["line-opacity"], 0.08);
 

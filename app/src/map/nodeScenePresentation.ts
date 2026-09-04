@@ -37,7 +37,7 @@ const SCENE_COLORS = {
 
 const ROUTE_ROLE_PAINT: Record<RouteSceneRole, RouteScenePaint> = {
   highlight: {
-    candidateOpacity: 0.95,
+    candidateOpacity: 0.72,
     corridorOpacity: 0.3,
     corridorWidth: 24,
     lineOpacity: 1,
@@ -65,7 +65,7 @@ const EMPHASIS_ROUTE_PAINT: Record<
 > = {
   route: {
     highlight: {
-      candidateOpacity: 0.98,
+      candidateOpacity: 0.9,
       corridorOpacity: 0.42,
       corridorWidth: 28,
       lineOpacity: 1,
@@ -88,7 +88,7 @@ const EMPHASIS_ROUTE_PAINT: Record<
   },
   terrain: {
     highlight: {
-      candidateOpacity: 0.72,
+      candidateOpacity: 0.48,
       corridorOpacity: 0.2,
       corridorWidth: 18,
       lineOpacity: 0.84,
@@ -111,7 +111,7 @@ const EMPHASIS_ROUTE_PAINT: Record<
   },
   evidence: {
     highlight: {
-      candidateOpacity: 0.88,
+      candidateOpacity: 0.7,
       corridorOpacity: 0.22,
       corridorWidth: 20,
       lineOpacity: 0.92,

@@ -48,6 +48,10 @@ async function loadStyleModule() {
     .replace(
       /import \{\r?\n  NODE_HYDROGRAPHY_LINE_LAYER_ID,\r?\n  NODE_HYDROGRAPHY_POINT_LAYER_ID,\r?\n  NODE_HYDROGRAPHY_SOURCE_ID,\r?\n\} from "\.\.\/data\/nodeHydrography";/,
       'const NODE_HYDROGRAPHY_LINE_LAYER_ID = "node-hydrography-line";\nconst NODE_HYDROGRAPHY_POINT_LAYER_ID = "node-hydrography-point";\nconst NODE_HYDROGRAPHY_SOURCE_ID = "node-hydrography";'
+    )
+    .replace(
+      'import { NODE_TERRAIN_COLOR_LAYER_ID, NODE_TERRAIN_RELIEF_LAYER_ID } from "./nodeTerrainRuntime";',
+      'const NODE_TERRAIN_COLOR_LAYER_ID = "node-terrain-color"; const NODE_TERRAIN_RELIEF_LAYER_ID = "node-terrain-relief";'
     );
   return importTranspiledModule("style.mjs", patchedStyle);
 }

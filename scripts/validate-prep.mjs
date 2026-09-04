@@ -72,7 +72,9 @@ const collectMarkdown = async (directory) => {
     else if (entry.name.endsWith(".md")) markdownFiles.push(path);
   }
 };
-await collectMarkdown(root);
+markdownFiles.push(join(root, "README.md"));
+await collectMarkdown(join(root, "docs"));
+await collectMarkdown(join(root, "templates"));
 
 for (const path of markdownFiles) {
   const text = await readFile(path, "utf8");

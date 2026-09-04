@@ -8,6 +8,16 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import { nodes } from "../src/data/nodes.ts";
 import { nodeScenes } from "../src/data/nodeScenes.ts";
+import {
+  NODE_TERRAIN_COLOR_LAYER_ID,
+  NODE_TERRAIN_COLOR_SOURCE_ID,
+  NODE_TERRAIN_RELIEF_LAYER_ID,
+  NODE_TERRAIN_RELIEF_SOURCE_ID,
+  applyNodeTerrain,
+  clearNodeTerrain,
+  nodeTerrainCoordinates,
+  resetNodeTerrainManifestForTests,
+} from "../src/map/nodeTerrainRuntime.ts";
 
 const stylePath = new URL("../src/map/style.ts", import.meta.url);
 const terrainRuntimePath = new URL("../src/map/terrainRuntime.ts", import.meta.url);
@@ -16,7 +26,6 @@ const nodeTerrainSizingPath = new URL("./node-terrain-sizing.mjs", import.meta.u
 const routeGeometryPath = new URL("../src/data/route-geometry.json", import.meta.url);
 const terrainDir = new URL("../public/terrain/", import.meta.url);
 const terrainNodeDir = new URL("../public/terrain/nodes/", import.meta.url);
-const today = "2026-09-03";
 
 async function importTranspiledModule(filename, sourceText, compilerOptions = {}) {
   const transpiled = ts.transpileModule(sourceText, {
@@ -50,6 +59,10 @@ async function loadStyleModule() {
     .replace(
       /import \{\r?\n  NODE_HYDROGRAPHY_LINE_LAYER_ID,\r?\n  NODE_HYDROGRAPHY_POINT_LAYER_ID,\r?\n  NODE_HYDROGRAPHY_SOURCE_ID,\r?\n\} from "\.\.\/data\/nodeHydrography";/,
       'const NODE_HYDROGRAPHY_LINE_LAYER_ID = "node-hydrography-line";\nconst NODE_HYDROGRAPHY_POINT_LAYER_ID = "node-hydrography-point";\nconst NODE_HYDROGRAPHY_SOURCE_ID = "node-hydrography";'
+    )
+    .replace(
+      'import { NODE_TERRAIN_COLOR_LAYER_ID, NODE_TERRAIN_RELIEF_LAYER_ID } from "./nodeTerrainRuntime";',
+      'const NODE_TERRAIN_COLOR_LAYER_ID = "node-terrain-color"; const NODE_TERRAIN_RELIEF_LAYER_ID = "node-terrain-relief";'
     );
   return importTranspiledModule("style.mjs", patchedStyle);
 }
@@ -114,7 +127,12 @@ class FakeMap {
     this.sourceAdds.push({ id, source });
     if (id === "terrainDem" && this.options.autoSourceLoaded) {
       queueMicrotask(() => {
-        if (!this.removed) this.emit("sourcedata", { sourceId: id, isSourceLoaded: true });
+        if (!this.removed) this.emit("sourcedata", {
+          sourceId: id,
+          sourceDataType: "content",
+          coord: { canonical: { z: 8, x: 1, y: 1 } },
+          isSourceLoaded: true,
+        });
       });
     }
     if (id === "terrainDem" && this.options.autoSourceError) {
@@ -155,6 +173,13 @@ class FakeMap {
     if (index >= 0) this.layers.splice(index, 0, nextLayer);
     else this.layers.push(nextLayer);
     this.visibility.set(nextLayer.id, nextLayer.layout.visibility ?? "visible");
+  }
+
+  removeLayer(id) {
+    this.assertActive();
+    const index = this.layers.findIndex((layer) => layer.id === id);
+    if (index >= 0) this.layers.splice(index, 1);
+    this.visibility.delete(id);
   }
 
   setLayoutProperty(id, key, value) {
@@ -315,7 +340,84 @@ test("base style falls back to paper land water and route when bbox metadata is 
   assert.ok(!layers.includes("contour-major"));
   assert.ok(!layers.includes("contour-mid"));
   assert.ok(!layers.includes("contour-fine"));
-  assert.deepEqual(MAP_LAYER_IDS.terrain, ["offline-terrain-color", "offline-terrain-relief"]);
+  assert.deepEqual(MAP_LAYER_IDS.terrain, [
+    "offline-terrain-color",
+    "offline-terrain-relief",
+    "node-terrain-color",
+    "node-terrain-relief",
+  ]);
+});
+
+class FakeNodeTerrainMap {
+  constructor() {
+    this.sources = new Map();
+    this.layers = new Map([["coastline-overlay", { id: "coastline-overlay" }]]);
+    this.beforeIds = [];
+  }
+  getSource(id) { return this.sources.get(id); }
+  addSource(id, source) {
+    this.sources.set(id, {
+      ...source,
+      updateImage(options) { Object.assign(this, options); },
+    });
+  }
+  removeSource(id) { this.sources.delete(id); }
+  getLayer(id) { return this.layers.get(id); }
+  addLayer(layer, beforeId) {
+    this.layers.set(layer.id, { ...layer });
+    this.beforeIds.push([layer.id, beforeId]);
+  }
+  removeLayer(id) { this.layers.delete(id); }
+  setLayoutProperty(id, name, value) {
+    const layer = this.layers.get(id);
+    layer.layout = { ...(layer.layout ?? {}), [name]: value };
+  }
+}
+
+test("node-local terrain selects manifest images above the global terrain and clears cleanly", async () => {
+  resetNodeTerrainManifestForTests();
+  const map = new FakeNodeTerrainMap();
+  const entry = {
+    nodeId: "node-01",
+    bbox: { west: 114, east: 116, south: 25, north: 27 },
+    filenames: { tint: "node-01-tint.png", hillshade: "node-01-hillshade.png" },
+    resolution: { width: 960, height: 600 },
+  };
+  const fetcher = async () => new Response(JSON.stringify({ generated: "2026-09-03", source: "test", nodes: [entry] }));
+
+  assert.deepEqual(nodeTerrainCoordinates(entry.bbox), [[114, 27], [116, 27], [116, 25], [114, 25]]);
+  assert.equal(await applyNodeTerrain(map, "node-01", true, fetcher), "ready");
+  assert.equal(map.getSource(NODE_TERRAIN_COLOR_SOURCE_ID).url, "terrain/nodes/node-01-tint.png");
+  assert.equal(map.getSource(NODE_TERRAIN_RELIEF_SOURCE_ID).url, "terrain/nodes/node-01-hillshade.png");
+  assert.equal(map.getLayer(NODE_TERRAIN_COLOR_LAYER_ID).layout.visibility, "visible");
+  assert.equal(map.getLayer(NODE_TERRAIN_RELIEF_LAYER_ID).layout.visibility, "visible");
+  assert.deepEqual(map.beforeIds, [
+    [NODE_TERRAIN_COLOR_LAYER_ID, "coastline-overlay"],
+    [NODE_TERRAIN_RELIEF_LAYER_ID, "coastline-overlay"],
+  ]);
+
+  clearNodeTerrain(map);
+  assert.equal(map.getLayer(NODE_TERRAIN_COLOR_LAYER_ID), undefined);
+  assert.equal(map.getSource(NODE_TERRAIN_COLOR_SOURCE_ID), undefined);
+});
+
+test("node-local terrain ignores stale manifest work and preserves global fallback when missing", async () => {
+  resetNodeTerrainManifestForTests();
+  const map = new FakeNodeTerrainMap();
+  let resolveManifest;
+  const pendingResponse = new Promise((resolve) => { resolveManifest = resolve; });
+  const first = applyNodeTerrain(map, "node-01", true, async () => pendingResponse);
+  clearNodeTerrain(map);
+  resolveManifest(new Response(JSON.stringify({ generated: "2026-09-03", source: "test", nodes: [] })));
+  assert.equal(await first, "stale");
+  assert.equal(map.layers.size, 1);
+
+  resetNodeTerrainManifestForTests();
+  assert.equal(
+    await applyNodeTerrain(map, "node-99", true, async () => new Response(JSON.stringify({ generated: "x", source: "x", nodes: [] }))),
+    "missing"
+  );
+  assert.equal(map.layers.size, 1);
 });
 
 test("probeHillshade fetches only bbox metadata before map construction", async () => {
@@ -359,7 +461,11 @@ test("node-local terrain crops cover all nine scenes and stay within the size bu
   const nodeIds = nodes.map((node) => node.id).sort();
   const manifestNodeIds = manifest.nodes.map((entry) => entry.nodeId).sort();
 
-  assert.equal(manifest.generated, today);
+  assert.match(manifest.generated, /^\d{4}-\d{2}-\d{2}$/);
+  assert.ok(
+    Math.abs(Date.now() - Date.parse(`${manifest.generated}T00:00:00Z`)) < 48 * 60 * 60 * 1000,
+    "terrain manifest generation date should be current rather than hard-coded"
+  );
   assert.equal(manifest.source, "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)");
   assert.equal(manifest.sampleZoom, 10);
   assert.equal(manifest.budgetBytes, 1500000);
@@ -487,12 +593,35 @@ test("loadContourLabels fetches label data once for runtime contour startup", as
 });
 
 test("ensureOnlineTerrain resolves ready once and reuses the on-demand DEM source", async () => {
-  const { ensureOnlineTerrain } = await loadTerrainRuntimeModule();
+  const { ONLINE_TERRAIN_PROBE_LAYER_ID, ensureOnlineTerrain } = await loadTerrainRuntimeModule();
   const map = new FakeMap({ autoSourceLoaded: true });
 
   assert.equal(await ensureOnlineTerrain(map), "ready");
+  assert.equal(map.getLayer(ONLINE_TERRAIN_PROBE_LAYER_ID), undefined);
   assert.equal(await ensureOnlineTerrain(map), "ready");
   assert.deepEqual(map.sourceAdds.map((entry) => entry.id), ["terrainDem"]);
+});
+
+test("online terrain waits for actual DEM tile content instead of source metadata", async () => {
+  const { ONLINE_TERRAIN_PROBE_LAYER_ID, ensureOnlineTerrain } = await loadTerrainRuntimeModule();
+  const map = new FakeMap();
+  const promise = ensureOnlineTerrain(map);
+  assert.ok(map.getLayer(ONLINE_TERRAIN_PROBE_LAYER_ID), "transparent probe should request DEM tile content");
+  let settled = false;
+  void promise.then(() => { settled = true; });
+
+  map.emit("sourcedata", { sourceId: "terrainDem", sourceDataType: "metadata", isSourceLoaded: true });
+  await Promise.resolve();
+  assert.equal(settled, false, "source metadata alone must not mark 3D terrain ready");
+
+  map.emit("sourcedata", {
+    sourceId: "terrainDem",
+    sourceDataType: "content",
+    coord: { canonical: { z: 8, x: 1, y: 1 } },
+    isSourceLoaded: true,
+  });
+  assert.equal(await promise, "ready");
+  assert.equal(map.getLayer(ONLINE_TERRAIN_PROBE_LAYER_ID), undefined);
 });
 
 test("ensureOnlineTerrain resolves offline on timeout without throwing into callers", async () => {

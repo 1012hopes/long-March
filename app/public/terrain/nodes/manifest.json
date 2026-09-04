@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-03",
+  "generated": "2026-09-04",
   "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
   "sampleZoom": 10,
   "budgetBytes": 1500000,
@@ -15,7 +15,7 @@
       "nodeId": "node-01",
       "terrainMode": "river-valley",
       "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
-      "generated": "2026-09-03",
+      "generated": "2026-09-04",
       "bbox": {
         "west": 114.51836,
         "east": 116.18864,
@@ -42,7 +42,7 @@
       "nodeId": "node-02",
       "terrainMode": "river-valley",
       "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
-      "generated": "2026-09-03",
+      "generated": "2026-09-04",
       "bbox": {
         "west": 110.37488,
         "east": 111.36812,
@@ -69,7 +69,7 @@
       "nodeId": "node-03",
       "terrainMode": "mountain",
       "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
-      "generated": "2026-09-03",
+      "generated": "2026-09-04",
       "bbox": {
         "west": 106.90459999999999,
         "east": 110.3704,
@@ -96,7 +96,7 @@
       "nodeId": "node-04",
       "terrainMode": "plain",
       "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
-      "generated": "2026-09-03",
+      "generated": "2026-09-04",
       "bbox": {
         "west": 106.1992,
         "east": 107.5508,
@@ -123,7 +123,7 @@
       "nodeId": "node-05",
       "terrainMode": "river-valley",
       "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
-      "generated": "2026-09-03",
+      "generated": "2026-09-04",
       "bbox": {
         "west": 105.59704,
         "east": 107.24996,
@@ -150,7 +150,7 @@
       "nodeId": "node-06",
       "terrainMode": "river-valley",
       "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
-      "generated": "2026-09-03",
+      "generated": "2026-09-04",
       "bbox": {
         "west": 101.95439999999999,
         "east": 103.6656,
@@ -177,7 +177,7 @@
       "nodeId": "node-07",
       "terrainMode": "river-valley",
       "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
-      "generated": "2026-09-03",
+      "generated": "2026-09-04",
       "bbox": {
         "west": 102.03999999999999,
         "east": 102.56,
@@ -204,7 +204,7 @@
       "nodeId": "node-08",
       "terrainMode": "mountain",
       "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
-      "generated": "2026-09-03",
+      "generated": "2026-09-04",
       "bbox": {
         "west": 102.1028,
         "east": 103.10719999999999,
@@ -231,7 +231,7 @@
       "nodeId": "node-09",
       "terrainMode": "plateau",
       "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
-      "generated": "2026-09-03",
+      "generated": "2026-09-04",
       "bbox": {
         "west": 103.62568,
         "east": 108.94032,

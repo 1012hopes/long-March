@@ -1714,6 +1714,19 @@ li.current .tl-title {
 
 /* ---------- 移动端 ---------- */
 @media (max-width: 900px) {
+  .app.learning-focus .topbar-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .app.learning-focus .topbar-actions .tool-btn:nth-of-type(3),
+  .app.learning-focus .topbar-actions .tool-btn:nth-of-type(4) {
+    display: none;
+  }
+
+  .app.learning-focus .right-panel-node {
+    max-height: 58vh;
+  }
+
   .topbar {
     flex-wrap: wrap;
     gap: 8px;

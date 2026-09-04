@@ -32,6 +32,7 @@ import {
   restoreHoveredRouteLineWidth,
 } from "./nodeScenePresentation";
 import { applyLearningEmphasisSupportPaint } from "./learningEmphasisPaint";
+import { applyNodeTerrain, clearNodeTerrain, type NodeTerrainMapLike } from "./nodeTerrainRuntime";
 import routeGeometry from "../data/route-geometry.json";
 import { nodes, epilogue } from "../data/nodes";
 import { stories } from "../data/stories";
@@ -242,7 +243,8 @@ export default function MapCanvas(props: Props) {
       };
       const syncRuntimeContours = () => {
         if (!map || !contourRuntimeStartedRef.current) return;
-        void ensureDetailContours(map, map.getZoom(), propsRef.current.layers.contours);
+        const visible = propsRef.current.layers.contours && !propsRef.current.learningFocus;
+        void ensureDetailContours(map, map.getZoom(), visible);
       };
       map.on("zoom", syncZoomDensity);
       map.on("zoom", syncRuntimeContours);
@@ -381,9 +383,10 @@ export default function MapCanvas(props: Props) {
           contourRuntimeStartedRef.current = true;
           loadedMap.off("idle", activateRuntimeContours);
           window.clearTimeout(contourKickoffTimer);
-          void ensureMajorContours(loadedMap, propsRef.current.layers.contours)
+          const visible = propsRef.current.layers.contours && !propsRef.current.learningFocus;
+          void ensureMajorContours(loadedMap, visible)
             .then(() => loadContourLabelsWhenIdle())
-            .then(() => ensureDetailContours(loadedMap, loadedMap.getZoom(), propsRef.current.layers.contours))
+            .then(() => ensureDetailContours(loadedMap, loadedMap.getZoom(), visible))
             .catch(() => {
               /* 轮廓线运行时按需加载，失败时保留纸面底图 */
             });
@@ -615,13 +618,25 @@ export default function MapCanvas(props: Props) {
     if (!map || !ready) return;
     const scene = props.learningFocus ? props.nodeScene : null;
     const sceneMap = map as unknown as SceneMapLike;
+    const terrainMap = map as unknown as NodeTerrainMapLike;
 
     if (!scene) {
       setSceneTransitions(map, prefersReducedMotion() ? 0 : 420);
       clearSceneAnnotations();
       clearNodeScene(sceneMap);
+      clearNodeTerrain(terrainMap);
       return;
     }
+
+    let terrainCancelled = false;
+    void applyNodeTerrain(terrainMap, scene.nodeId, props.layers.terrain).then(() => {
+      if (terrainCancelled) return;
+      applyLearningEmphasisSupportPaint(
+        sceneMap,
+        props.learningEmphasis,
+        MAP_LAYER_IDS.terrain
+      );
+    });
 
     const transitionMs = prefersReducedMotion() ? 0 : 420;
     setSceneTransitions(map, transitionMs);
@@ -658,17 +673,21 @@ export default function MapCanvas(props: Props) {
         for (const el of annotationEls) el.classList.add("visible");
       });
       return () => {
+        terrainCancelled = true;
         cancelAnimationFrame(raf);
         clearSceneAnnotations();
         clearNodeScene(sceneMap);
+        clearNodeTerrain(terrainMap);
       };
     }
 
     return () => {
+      terrainCancelled = true;
       clearSceneAnnotations();
       clearNodeScene(sceneMap);
+      clearNodeTerrain(terrainMap);
     };
-  }, [props.learningFocus, props.nodeScene, ready]);
+  }, [props.learningFocus, props.nodeScene, props.layers.terrain, ready]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -730,25 +749,38 @@ export default function MapCanvas(props: Props) {
     const map = mapRef.current;
     if (!map || !ready) return;
     const visibility = (value: boolean) => (value ? "visible" : "none");
+    const contoursVisible = props.layers.contours && !props.learningFocus;
     const setLayers = (ids: string[], value: boolean) => {
       for (const id of ids) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visibility(value));
       }
     };
     setLayers(MAP_LAYER_IDS.terrain, props.layers.terrain);
-    setLayers(MAP_LAYER_IDS.contours, props.layers.contours);
+    setLayers(MAP_LAYER_IDS.contours, contoursVisible);
     setLayers(MAP_LAYER_IDS.water, props.layers.water);
     setLayers(MAP_LAYER_IDS.route, props.layers.route);
     if (contourRuntimeStartedRef.current) {
-      void ensureMajorContours(map, props.layers.contours);
-      void ensureDetailContours(map, map.getZoom(), props.layers.contours);
+      void ensureMajorContours(map, contoursVisible);
+      void ensureDetailContours(map, map.getZoom(), contoursVisible);
     }
     for (const marker of geoRefs.current) marker.classList.toggle("hidden", !props.layers.labels);
     for (const marker of secondaryRefs.current) marker.classList.toggle("hidden", !props.layers.nodes);
     for (const marker of contourLabelRefs.current) {
-      marker.classList.toggle("hidden", !props.layers.contours || !props.layers.labels);
+      marker.classList.toggle("hidden", !contoursVisible || !props.layers.labels);
     }
-  }, [props.layers, ready]);
+  }, [props.layers, props.learningFocus, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !map.getLayer("rivers-line")) return;
+    map.setPaintProperty(
+      "rivers-line",
+      "line-opacity",
+      props.learningFocus
+        ? 0.82
+        : ["interpolate", ["linear"], ["get", "scalerank"], 3, 0.88, 7, 0.58]
+    );
+  }, [props.learningFocus, ready]);
 
   // 1936 尾声
   useEffect(() => {
