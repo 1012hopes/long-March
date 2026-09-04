@@ -72,6 +72,11 @@ async function loadTerrainRuntimeModule() {
   return importTranspiledModule("terrainRuntime.mjs", runtimeText);
 }
 
+async function loadNodeTerrainRuntimeModule() {
+  const sourceText = await readFile(new URL("../src/map/nodeTerrainRuntime.ts", import.meta.url), "utf8");
+  return importTranspiledModule("nodeTerrainRuntime.mjs", sourceText);
+}
+
 async function loadTopBarModule() {
   const sourceText = await readFile(topBarPath, "utf8");
   return importTranspiledModule("TopBar.mjs", sourceText);
@@ -590,6 +595,88 @@ test("loadContourLabels fetches label data once for runtime contour startup", as
   }
 
   assert.deepEqual(calls, ["terrain/contour-labels.geojson"]);
+});
+
+test("loadNodeTerrainManifest retries after a non-OK fetch before returning a later manifest", async () => {
+  const { loadNodeTerrainManifest, resetNodeTerrainManifestForTests } = await loadNodeTerrainRuntimeModule();
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+  let attempt = 0;
+  globalThis.fetch = async (input) => {
+    calls.push(String(input));
+    attempt++;
+    if (attempt === 1) return { ok: false, async json() { return null; } };
+    return {
+      ok: true,
+      async json() {
+        return {
+          generated: "2026-09-04",
+          source: "retry",
+          nodes: [],
+        };
+      },
+    };
+  };
+
+  try {
+    resetNodeTerrainManifestForTests();
+    assert.equal(await loadNodeTerrainManifest(), null);
+    assert.deepEqual(await loadNodeTerrainManifest(), {
+      generated: "2026-09-04",
+      source: "retry",
+      nodes: [],
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+    resetNodeTerrainManifestForTests();
+  }
+
+  assert.deepEqual(calls, ["terrain/nodes/manifest.json", "terrain/nodes/manifest.json"]);
+});
+
+test("loadContourLabels retries after non-OK and null payloads in fresh sessions", async () => {
+  const payload = {
+    type: "FeatureCollection",
+    features: [{ type: "Feature", properties: { elevation: 1200 }, geometry: { type: "Point", coordinates: [104, 30] } }],
+  };
+
+  const runScenario = async (responses, expectedCalls) => {
+    const { loadContourLabels } = await loadTerrainRuntimeModule();
+    const calls = [];
+    const originalFetch = globalThis.fetch;
+    let attempt = 0;
+    globalThis.fetch = async (input) => {
+      calls.push(String(input));
+      const response = responses[Math.min(attempt, responses.length - 1)];
+      attempt++;
+      return response();
+    };
+
+    try {
+      assert.equal(await loadContourLabels(), null);
+      assert.deepEqual(await loadContourLabels(), payload);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    assert.deepEqual(calls, expectedCalls);
+  };
+
+  await runScenario(
+    [
+      () => ({ ok: false, async json() { return null; } }),
+      () => ({ ok: true, async json() { return payload; } }),
+    ],
+    ["terrain/contour-labels.geojson", "terrain/contour-labels.geojson"]
+  );
+
+  await runScenario(
+    [
+      () => ({ ok: true, async json() { return null; } }),
+      () => ({ ok: true, async json() { return payload; } }),
+    ],
+    ["terrain/contour-labels.geojson", "terrain/contour-labels.geojson"]
+  );
 });
 
 test("ensureOnlineTerrain resolves ready once and reuses the on-demand DEM source", async () => {

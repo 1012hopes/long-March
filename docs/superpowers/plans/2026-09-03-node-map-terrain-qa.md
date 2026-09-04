@@ -332,3 +332,20 @@ DEM 失败场景在 390×844 下拦截了 9 次 Terrarium 瓦片请求：按钮�
 - `npm run test:stories`：PASS（8 个断言通过）
 - `npm run build`：PASS（`tsc -b && vite build` 成功，产物 `dist/assets/index-CkFaISZv.css` gzip `21.98 kB`，`dist/assets/index-Cw_MuPSH.js` gzip `405.36 kB`）
 - `git diff --check`：PASS（无空白错误；仅 LF→CRLF 提示）
+
+## Task 8 final review follow-up（2026-09-04）
+
+- `loadNodeTerrainManifest()` 现在在非 OK / 失败后清空缓存，后续 node terrain 入口可以重新拉取 manifest。
+- `loadContourLabels()` 继续在非 OK / `null` payload 后清空缓存；`MapCanvas` 会在 label 返回 `null` 时延迟重试一次，避免轮廓标签启动因瞬时失败而永久跳过。
+- 回归测试覆盖：
+  - `manifest fail -> later success`
+  - `contour label fail/non-OK -> success`
+  - `contour label null -> later success`
+- 最终验证：
+  - `npm run test:loading`
+  - `npm run test:map`
+  - `npm run test:scenes`
+  - `npm run test:learning`
+  - `npm run test:stories`
+  - `npm run build`
+  - `git diff --check`

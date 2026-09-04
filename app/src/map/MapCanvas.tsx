@@ -364,6 +364,13 @@ export default function MapCanvas(props: Props) {
         const loadContourLabelsWhenIdle = async () => {
           const data = await loadContourLabels();
           if (disposed || !data || contourLabelRefs.current.length > 0) return;
+          if (!data) {
+            contourLabelRetryTimer = window.setTimeout(() => {
+              contourLabelRetryTimer = null;
+              if (!disposed) void loadContourLabelsWhenIdle();
+            }, 1500);
+            return;
+          }
           for (const feature of data.features) {
             const elevation = feature.properties?.elevation;
             if (typeof elevation !== "number") continue;
@@ -392,9 +399,13 @@ export default function MapCanvas(props: Props) {
             });
         };
         const contourKickoffTimer = window.setTimeout(activateRuntimeContours, 900);
+        let contourLabelRetryTimer: ReturnType<typeof setTimeout> | null = null;
         loadedMap.on("idle", activateRuntimeContours);
         loadedMap.once("remove", () => {
           window.clearTimeout(contourKickoffTimer);
+          if (contourLabelRetryTimer !== null) {
+            window.clearTimeout(contourLabelRetryTimer);
+          }
           loadedMap.off("idle", activateRuntimeContours);
           loadedMap.off("zoom", syncZoomDensity);
           loadedMap.off("zoom", syncRuntimeContours);

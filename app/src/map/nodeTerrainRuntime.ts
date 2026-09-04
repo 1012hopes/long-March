@@ -49,8 +49,12 @@ export function loadNodeTerrainManifest(
 ): Promise<NodeTerrainManifest | null> {
   if (!manifestPromise) {
     manifestPromise = fetcher("terrain/nodes/manifest.json")
-      .then(async (response) => (response.ok ? (await response.json()) as NodeTerrainManifest : null))
-      .catch(() => null);
+      .then(async (response) => (response.ok ? ((await response.json()) as NodeTerrainManifest) : null))
+      .catch(() => null)
+      .then((data) => {
+        if (!data) manifestPromise = null;
+        return data;
+      });
   }
   return manifestPromise;
 }
@@ -146,4 +150,3 @@ export function clearNodeTerrain(map: NodeTerrainMapLike): void {
   stateByMap.set(map as object, { request: previous.request + 1, nodeId: null });
   removeNodeTerrain(map);
 }
-
