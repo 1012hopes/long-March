@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 import ts from "typescript";
 import { annotationPresentation } from "../src/map/nodeScenePresentation.ts";
 import {
+  hydrographySpecsForScene,
   NODE_HYDROGRAPHY_LINE_LAYER_ID,
   NODE_HYDROGRAPHY_POINT_LAYER_ID,
   NODE_HYDROGRAPHY_SOURCE_ID,
@@ -110,6 +111,28 @@ test("node hydrography scenes cover the six required water systems with source-b
 
   for (const systemId of requiredSystems) {
     assert.ok(seenSystems.has(systemId), systemId + " should be represented in the hydro overlay");
+  }
+});
+
+test("authored clip bounds stay identical across feature properties labels and provenance", () => {
+  for (const scene of nodeScenes) {
+    const hydro = sceneHydrography(scene);
+    const authoredSpecs = new Map(hydrographySpecsForScene(scene.nodeId).map((spec) => [spec.systemId, spec]));
+
+    for (const provenance of hydro.provenance) {
+      const feature = hydro.featureCollection.features.find(
+        (candidate) => candidate.properties?.systemId === provenance.systemId
+      );
+      const label = hydro.labels.find((candidate) => candidate.systemId === provenance.systemId);
+      const authored = authoredSpecs.get(provenance.systemId);
+
+      assert.ok(feature, provenance.systemId + " should have a matching feature");
+      assert.ok(label, provenance.systemId + " should have a matching label");
+      assert.ok(authored, provenance.systemId + " should have an authored source spec");
+      assert.deepEqual(feature.properties.clipBounds, authored.clipBounds, provenance.systemId + " feature clip bounds drifted from authored spec");
+      assert.deepEqual(label.clipBounds, authored.clipBounds, provenance.systemId + " label clip bounds drifted from authored spec");
+      assert.deepEqual(provenance.clipBounds, authored.clipBounds, provenance.systemId + " provenance clip bounds drifted from authored spec");
+    }
   }
 });
 

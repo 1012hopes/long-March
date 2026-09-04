@@ -14,11 +14,13 @@ export type HydrographyLabel = {
   id: string;
   label: string;
   kind: HydrographyLabelKind;
+  systemId: string;
   location: [number, number];
   offset: [number, number];
   certainty: "confirmed" | "approximate";
   sourceIds: string[];
   clipBounds: [number, number, number, number];
+  labelHitBounds?: [number, number, number, number];
   provenance: string;
   ariaLabel: string;
 };
@@ -42,7 +44,7 @@ export type HydrographyScene = {
 type Coord = [number, number];
 type Bbox = [number, number, number, number];
 
-type HydroFeatureSpec =
+export type HydroFeatureSpec =
   | {
       kind: "river-line";
       id: string;
@@ -317,6 +319,10 @@ function buildLabelBounds(location: Coord, pad = 0.09): Bbox {
   return [location[0] - pad, location[1] - pad, location[0] + pad, location[1] + pad];
 }
 
+export function hydrographySpecsForScene(sceneId: string): readonly HydroFeatureSpec[] {
+  return SCENE_HYDROGRAPHY[sceneId] ?? [];
+}
+
 function featureProps(spec: HydroFeatureSpec) {
   return {
     id: spec.id,
@@ -370,11 +376,13 @@ function toFeatureCollection(scene: NodeMapScene): HydrographyScene {
       id: `${spec.id}-label`,
       label: spec.label,
       kind: spec.kind === "mountain" ? "mountain" : "river",
+      systemId: spec.systemId,
       location: labelLocation,
       offset: spec.offset,
       certainty: spec.certainty,
       sourceIds: spec.sourceIds,
-      clipBounds: spec.kind === "river-line" ? spec.clipBounds : buildLabelBounds(spec.location),
+      clipBounds: spec.clipBounds,
+      labelHitBounds: spec.kind === "river-line" ? undefined : buildLabelBounds(spec.location),
       provenance:
         spec.kind === "river-line"
           ? `clipped from ${spec.sourceRef} to ${spec.clipBounds.join(",")}`
@@ -393,7 +401,7 @@ function toFeatureCollection(scene: NodeMapScene): HydrographyScene {
     method: spec.kind === "river-line" ? "clipped-line" : "source-backed-point",
     sourceRef: spec.sourceRef,
     sourceIds: spec.sourceIds,
-    clipBounds: spec.kind === "river-line" ? spec.clipBounds : buildLabelBounds(spec.location),
+    clipBounds: spec.clipBounds,
   }));
 
   return {
