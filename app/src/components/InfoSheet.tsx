@@ -33,7 +33,10 @@ export default function InfoSheet(p: Props) {
             <ul>
               <li>底图为 Natural Earth 物理要素（公有领域），本演示<strong>刻意不绘制国界与省界</strong>；正式版将采用天地图合规底图并履行地图审核程序；</li>
               <li>路线与节点几何为依据史料绘制的<strong>可视化还原示意</strong>，不是逐日精确轨迹；争议段并列候选线，不预设正确答案；</li>
-              <li>地形晕渲与海拔剖面依据开放 DEM（AWS Terrain Tiles，源自 SRTM / NASADEM 等开放数据）派生，不用于证明历史路线；</li>
+              <li>
+                地形晕渲、海拔剖面与 3D 地形依据开放 DEM（AWS Terrain Tiles，源自 SRTM / NASADEM）
+                预提取到本地（走廊 DEM 金字塔），<strong>离线可用</strong>，不用于证明历史路线；
+              </li>
               <li>史料条目来自项目组台账（含权威机构链接与权利状态），演示中不复制受版权保护的原文与影像；</li>
               <li>
                 故事卡内的「官方影像」仅链接至权威平台的播放页（共产党员网、央视网等），本项目不复制、不转存任何视频文件；

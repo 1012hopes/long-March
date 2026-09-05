@@ -92,7 +92,13 @@ function graticule() {
   return { type: "FeatureCollection", features: feats } as GeoJSON.FeatureCollection;
 }
 
-export function buildStyle(hillshade: HillshadeBbox | null): StyleSpecification {
+export type StyleVariant = {
+  /** 「当今地形」现代渲染：DEM 高程着色增强，静态纸面阴影弱化（让位给 DEM 动态山体阴影） */
+  modern?: boolean;
+};
+
+export function buildStyle(hillshade: HillshadeBbox | null, variant: StyleVariant = {}): StyleSpecification {
+  const modern = variant.modern === true;
   const sources: Record<string, unknown> = {
     land: { type: "geojson", data: "geo/land.json" },
     rivers: { type: "geojson", data: "geo/rivers.json" },
@@ -117,6 +123,42 @@ export function buildStyle(hillshade: HillshadeBbox | null): StyleSpecification 
       coordinates,
     };
   }
+
+  // 「当今地形」的渲染参数（modern 变体）：着色更饱和，静态阴影几乎退场
+  const terrainPaint = modern
+    ? {
+        "raster-opacity": 0.92,
+        "raster-brightness-min": 0.02,
+        "raster-brightness-max": 1,
+        "raster-saturation": 0.3,
+        "raster-contrast": 0.09,
+        "raster-resampling": "linear",
+      }
+    : {
+        "raster-opacity": 0.34,
+        "raster-brightness-min": 0.06,
+        "raster-brightness-max": 0.94,
+        "raster-saturation": -0.08,
+        "raster-contrast": -0.06,
+        "raster-resampling": "linear",
+      };
+  const reliefPaint = modern
+    ? {
+        "raster-opacity": 0.14,
+        "raster-brightness-min": 0.1,
+        "raster-brightness-max": 0.96,
+        "raster-saturation": -1,
+        "raster-contrast": 0.1,
+        "raster-resampling": "linear",
+      }
+    : {
+        "raster-opacity": 0.38,
+        "raster-brightness-min": 0.1,
+        "raster-brightness-max": 0.96,
+        "raster-saturation": -1,
+        "raster-contrast": 0.18,
+        "raster-resampling": "linear",
+      };
 
   // 每条候选线一个 source（line-gradient 需要 lineMetrics）
   for (const line of routeGeometry) {
@@ -158,27 +200,13 @@ export function buildStyle(hillshade: HillshadeBbox | null): StyleSpecification 
         id: "offline-terrain-color",
         type: "raster",
         source: "offlineTerrainTint",
-        paint: {
-          "raster-opacity": 0.34,
-          "raster-brightness-min": 0.06,
-          "raster-brightness-max": 0.94,
-          "raster-saturation": -0.08,
-          "raster-contrast": -0.06,
-          "raster-resampling": "linear",
-        },
+        paint: terrainPaint,
       },
       {
         id: "offline-terrain-relief",
         type: "raster",
         source: "offlineHillshade",
-        paint: {
-          "raster-opacity": 0.38,
-          "raster-brightness-min": 0.1,
-          "raster-brightness-max": 0.96,
-          "raster-saturation": -1,
-          "raster-contrast": 0.18,
-          "raster-resampling": "linear",
-        },
+        paint: reliefPaint,
       }
     );
   }

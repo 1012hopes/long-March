@@ -10,12 +10,13 @@ import InfoSheet from "./components/InfoSheet";
 import StoryCatalog from "./components/StoryCatalog";
 import LayerPanel, { type MapLayerVisibility } from "./components/LayerPanel";
 import MapTitleReveal from "./components/MapTitleReveal";
-import { type LearningEmphasis } from "./components/nodeLearning";
+import CompareGuide from "./components/CompareGuide";
+import { altitudeForSegment, type LearningEmphasis } from "./components/nodeLearning";
 import { TOUR_STOPS } from "./tour";
 import { nodes, type NodeUnit } from "./data/nodes";
 import { sceneForNode } from "./data/nodeScenes";
 import { stories, type StoryPoint } from "./data/stories";
-import { NODE_FRACTIONS, activeSegmentAt } from "./data/time";
+import { NODE_FRACTIONS, SEG_FRACTIONS, activeSegmentAt, marchDayAt, marchDistanceLi } from "./data/time";
 import { narrationFor } from "./data/narration";
 import { startAmbient, stopAmbient } from "./audio/ambient";
 import { SEG_PRIMARY_LINE } from "./map/cruise";
@@ -157,6 +158,7 @@ export default function App() {
   );
   const [depth, setDepth] = useState<"concise" | "deep">("concise");
   const [terrainUi, setTerrainUi] = useState<TerrainUiState>(() => createTerrainUiState());
+  const [compareOn, setCompareOn] = useState(false);
   const [cruising, setCruising] = useState(false);
   const [showEpilogue, setShowEpilogue] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
@@ -565,11 +567,60 @@ export default function App() {
   );
 
   const toggleTerrain3d = useCallback(() => {
+    userTouched3dRef.current = true;
     setTerrainUi((current) => {
       if (current.active || current.pendingActivationRequestId !== null) return disableTerrain3d(current);
       return requestTerrainActivation(current).state;
     });
   }, []);
+
+  // 3D 默认开启：首次「就绪」且用户尚未碰过 3D 开关时自动激活一次；
+  // 用户随后关闭即尊重其选择，不再自动开启。偏好减少动效的观众跳过。
+  const auto3dDoneRef = useRef(false);
+  const userTouched3dRef = useRef(false);
+  useEffect(() => {
+    if (auto3dDoneRef.current || userTouched3dRef.current) return;
+    if (terrainUi.status !== "ready" || terrainUi.active || terrainUi.pendingActivationRequestId !== null) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    auto3dDoneRef.current = true;
+    setTerrainUi((current) => requestTerrainActivation(current).state);
+  }, [terrainUi.status, terrainUi.active, terrainUi.pendingActivationRequestId]);
+
+  // 「行至诗句」：播放/巡航行至某节点时，右下浮现该节点名句，数秒后淡出
+  const [quoteCard, setQuoteCard] = useState<{ id: string; key: number } | null>(null);
+  const playingNodeId = playing || cruising ? nodeAtTimelineT(timelineT)?.id ?? null : null;
+  useEffect(() => {
+    if ((!playing && !cruising) || !playingNodeId) {
+      setQuoteCard(null);
+      return;
+    }
+    const node = nodes.find((item) => item.id === playingNodeId);
+    if (!node?.quote) {
+      setQuoteCard(null);
+      return;
+    }
+    setQuoteCard({ id: playingNodeId, key: Date.now() });
+    const timer = window.setTimeout(() => setQuoteCard(null), 5400);
+    return () => window.clearTimeout(timer);
+  }, [playing, cruising, playingNodeId]);
+
+  // 行军计程仪：第几天 / 已行里数 / 当前海拔（播放与巡航时实时更新）
+  const marchActive = playing || cruising;
+  const marchDay = marchDayAt(timelineT);
+  const marchLi = marchDistanceLi(timelineT);
+  const [segStart, segEnd] = SEG_FRACTIONS[activeSeg];
+  const segFrac = Math.max(0, Math.min(1, (revealT - segStart) / (segEnd - segStart || 1)));
+  const currentAltitude = altitudeForSegment(activeSeg, segFrac);
+
+  // 氛围：播放/巡航跟随时间轴上的节点，静态时跟随选中节点
+  const atmosphereNodeId = (playing || cruising ? playingNodeId : selectedNodeId) ?? null;
+  const atmosphere = nodes.find((item) => item.id === atmosphereNodeId)?.atmosphere ?? null;
+
+  // 终点总结卡：时间轴抵达 1935-10-22 时浮现
+  const [finaleOpen, setFinaleOpen] = useState(false);
+  useEffect(() => {
+    setFinaleOpen(timelineT >= 0.995 && mode !== "tour");
+  }, [timelineT, mode]);
 
   return (
     <div
@@ -604,9 +655,52 @@ export default function App() {
           setTerrainUi((current) => cancelTerrainActivationRequest(current));
         }}
         cruise={cruising}
+        compare={compareOn}
+        atmosphere={atmosphere}
         onTerrainStatusChange={(status: TerrainStatus) => setTerrainUi((current) => syncTerrainStatus(current, status))}
         onTerrainActivationApplied={(requestId) => setTerrainUi((current) => applyTerrainActivation(current, requestId))}
       />
+
+      {compareOn && <CompareGuide />}
+
+      {marchActive && (
+        <div className="march-odometer" role="status">
+          <strong>长征第 {marchDay} 天</strong>
+          <span>已行约 {marchLi.toLocaleString("zh-CN")} 里（按图示路线）</span>
+          <span>当前海拔 ≈ {currentAltitude !== null ? currentAltitude.toLocaleString("zh-CN") : "—"} 米</span>
+        </div>
+      )}
+
+      {finaleOpen && (
+        <div className="finale-card" role="dialog" aria-label="中央红军长征结束">
+          <p className="finale-date">1935年10月22日 · 吴起镇</p>
+          <h3>中央红军长征结束</h3>
+          <ul>
+            <li>历时约一年 · 370 余天</li>
+            <li>行程约二万五千里</li>
+            <li>转战十一省</li>
+          </ul>
+          <blockquote className="finale-quote">
+            「长征是历史纪录上的第一次，长征是宣言书，长征是宣传队，长征是播种机。」
+          </blockquote>
+          <p className="finale-attribution">—— 毛泽东《论反对日本帝国主义的策略》（1935年12月）</p>
+          <p className="finale-fine">1936年10月三大主力会师，是长征总史的终点。</p>
+          <div className="finale-actions">
+            <button
+              className="primary-btn"
+              onClick={() => {
+                setFinaleOpen(false);
+                fly({ bounds: ROUTE_BOUNDS, duration: CAMERA_MOTION_MS });
+              }}
+            >
+              回看全程
+            </button>
+            <button className="ghost-btn" onClick={() => setFinaleOpen(false)}>
+              继续探索
+            </button>
+          </div>
+        </div>
+      )}
 
       {activeNodeScene && selectedNode && !focusMode && (
         <NodeSceneCartouche node={selectedNode} scene={activeNodeScene} placeLabel={activeNodePlaceLabel} />
@@ -626,6 +720,18 @@ export default function App() {
         </div>
       )}
 
+      {quoteCard &&
+        (() => {
+          const quotedNode = nodes.find((item) => item.id === quoteCard.id);
+          if (!quotedNode?.quote) return null;
+          return (
+            <figure className="quote-float" key={quoteCard.key} role="status">
+              <blockquote>{quotedNode.quote.text}</blockquote>
+              <figcaption>—— {quotedNode.quote.attribution}</figcaption>
+            </figure>
+          );
+        })()}
+
       {!focusMode && (
         <TopBar
           mode={mode}
@@ -633,6 +739,8 @@ export default function App() {
           terrainStatus={terrainUi.status}
           terrain3dActive={terrainUi.active}
           terrainPendingActivation={terrainUi.pendingActivationRequestId !== null}
+          compareOn={compareOn}
+          onCompareToggle={() => setCompareOn((v) => !v)}
           onTerrain3d={toggleTerrain3d}
           cruising={cruising}
           onCruiseToggle={toggleCruise}

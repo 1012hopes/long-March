@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import maplibregl, { type Map as MlMap, type LngLatBoundsLike } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { buildStyle, MAP_LAYER_IDS, probeHillshade } from "./style";
+import { buildStyle, MAP_LAYER_IDS, probeHillshade, type HillshadeBbox } from "./style";
 import type { NodeMapScene } from "../data/nodeScenes";
 import type { LearningEmphasis } from "../components/nodeLearning";
 import {
@@ -12,7 +12,9 @@ import {
   sceneHydrography,
 } from "../data/nodeHydrography";
 import {
+  COMPARE_HILLSHADE_LAYER_ID,
   cancelOnlineTerrain,
+  ensureCompareHillshade,
   ensureDetailContours,
   ensureMajorContours,
   ensureOnlineTerrain,
@@ -80,6 +82,10 @@ type Props = {
   onSelectStory: (id: string) => void;
   onUserGesture: () => void;
   cruise?: boolean;
+  /** 古今对照：右侧「当今地形」同步地图 */
+  compare?: boolean;
+  /** 氛围预设（昼夜/天气），叠加在地图上的轻量色调层 */
+  atmosphere?: string | null;
   onTerrainStatusChange: (status: "local" | "loading" | "ready" | "offline") => void;
   onTerrainActivationApplied: (requestId: number) => void;
 };
@@ -138,6 +144,48 @@ function makeMarker(className: string, html: string): HTMLDivElement {
   return el;
 }
 
+/** 把一条路线的显影状态写到指定地图（主图与「当今」对照图共用） */
+function paintLineReveal(map: MlMap, line: (typeof routeGeometry)[number], f: number, t: number) {
+  const isCandidate = line.id.endsWith("a") || line.id.endsWith("b");
+  try {
+    if (isCandidate) {
+      if (map.getLayer(`${line.id}-cand`)) {
+        const wa = LINE_WINDOWS[line.id][0];
+        map.setPaintProperty(`${line.id}-cand`, "line-opacity", t >= wa - 1e-6 ? 0.95 : 0);
+      }
+      return;
+    }
+    const stops: unknown[] = ["step", ["line-progress"]];
+    if (f <= 0) {
+      stops.push(transparentOf("rgb(166,50,43)"));
+    } else {
+      stops.push("rgb(166,50,43)", Math.max(0.0001, f), transparentOf("rgb(166,50,43)"));
+    }
+    if (map.getLayer(`${line.id}-line`)) {
+      map.setPaintProperty(`${line.id}-line`, "line-gradient", stops);
+    }
+    if (map.getLayer(`${line.id}-corridor`)) {
+      map.setPaintProperty(
+        `${line.id}-corridor`,
+        "line-gradient",
+        f <= 0
+          ? transparentOf("rgb(216,163,157)")
+          : ["step", ["line-progress"], "rgb(216,163,157)", Math.max(0.0001, f), transparentOf("rgb(216,163,157)")]
+      );
+    }
+  } catch {
+    /* 图层未就绪 */
+  }
+}
+
+/** 无条件重放整条路线的显影状态（对照图创建时用） */
+function paintRouteReveal(map: MlMap, t: number) {
+  for (const line of routeGeometry) {
+    const [wa, wb] = LINE_WINDOWS[line.id];
+    paintLineReveal(map, line, clamp01((t - wa) / (wb - wa)), t);
+  }
+}
+
 export default function MapCanvas(props: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -151,6 +199,12 @@ export default function MapCanvas(props: Props) {
   const epilogueRef = useRef<HTMLDivElement | null>(null);
   const lastFracRef = useRef<Record<string, number>>({});
   const gesturedRef = useRef(false);
+  const hillshadeRef = useRef<HillshadeBbox | null>(null);
+  const compareMapRef = useRef<MlMap | null>(null);
+  const compareHostRef = useRef<HTMLDivElement | null>(null);
+  const compareNodeMarkerRefs = useRef<HTMLDivElement[]>([]);
+  const syncingRef = useRef(false);
+  const atmosphereVeilRef = useRef<HTMLDivElement | null>(null);
   const [ready, setReady] = useState(false);
   const propsRef = useRef(props);
   const contourRuntimeStartedRef = useRef(false);
@@ -201,6 +255,7 @@ export default function MapCanvas(props: Props) {
 
     probeHillshade().then((hillshade) => {
       if (disposed || !containerRef.current) return;
+      hillshadeRef.current = hillshade;
       // 初始相机直接取景长征路线全景（ROUTE_BOUNDS 由整条主线外扩 0.6° 计算得出）。
       const [west, south, east, north] = ROUTE_BOUNDS;
       map = new maplibregl.Map({
@@ -218,6 +273,11 @@ export default function MapCanvas(props: Props) {
         dragRotate: true,
       });
       mapRef.current = map;
+      // 氛围层：昼夜/天气色调，位于两张地图之上、UI 之下
+      const veil = document.createElement("div");
+      veil.className = "atmosphere-veil";
+      containerRef.current.appendChild(veil);
+      atmosphereVeilRef.current = veil;
       map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true, visualizePitch: true }), "bottom-right");
       map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }), "bottom-left");
 
@@ -252,7 +312,8 @@ export default function MapCanvas(props: Props) {
 
       const gesture = () => {
         gesturedRef.current = true;
-        map?.stop();
+        // 不调用 map.stop()：用户输入本就会打断相机动画，
+        // 而在 pointerdown 阶段强制 stop 会取消刚激活的拖拽与俯仰过渡（MapLibre 5.24）。
         propsRef.current.onUserGesture();
       };
       for (const ev of ["mousedown", "wheel", "touchstart", "dragstart"]) {
@@ -531,6 +592,7 @@ export default function MapCanvas(props: Props) {
       if (map) resetOnlineTerrain(map);
       map?.remove();
       mapRef.current = null;
+      atmosphereVeilRef.current = null;
       contourRuntimeStartedRef.current = false;
       terrainPrefetchStartedRef.current = false;
       markerRefs.current.clear();
@@ -543,11 +605,12 @@ export default function MapCanvas(props: Props) {
     };
   }, []);
 
-  // 进度 → 路线显影
+  // 进度 → 路线显影（主图 + 古今对照图共用同一显影状态）
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
     const t = props.progress;
+    const targets: MlMap[] = compareMapRef.current ? [map, compareMapRef.current] : [map];
 
     for (const line of routeGeometry) {
       const [wa, wb] = LINE_WINDOWS[line.id];
@@ -556,37 +619,23 @@ export default function MapCanvas(props: Props) {
       if (last !== undefined && Math.abs(last - f) < 0.0008) continue;
       lastFracRef.current[line.id] = f;
 
-      const isCandidate = line.id.endsWith("a") || line.id.endsWith("b");
-      if (isCandidate) {
-        map.setPaintProperty(`${line.id}-cand`, "line-opacity", t >= wa - 1e-6 ? 0.95 : 0);
-      } else {
-        const stops: unknown[] = ["step", ["line-progress"]];
-        if (f <= 0) {
-          stops.push(transparentOf("rgb(166,50,43)"));
-        } else {
-          stops.push("rgb(166,50,43)", Math.max(0.0001, f), transparentOf("rgb(166,50,43)"));
-        }
-        try {
-          map.setPaintProperty(`${line.id}-line`, "line-gradient", stops);
-          map.setPaintProperty(
-            `${line.id}-corridor`,
-            "line-gradient",
-            f <= 0
-              ? transparentOf("rgb(216,163,157)")
-              : ["step", ["line-progress"], "rgb(216,163,157)", Math.max(0.0001, f), transparentOf("rgb(216,163,157)")]
-          );
-        } catch {
-          /* 图层未就绪 */
-        }
+      for (const target of targets) {
+        paintLineReveal(target, line, f, t);
       }
     }
 
-    // 节点标记显影
+    // 节点标记显影（主图 + 对照图同步）
     for (const node of nodes) {
       const rec = markerRefs.current.get(node.id);
       if (!rec) continue;
       const visible = props.layers.nodes && t >= NODE_FRACTIONS[node.id] - 1e-6;
       rec.el.classList.toggle("visible", visible);
+    }
+    for (let i = 0; i < nodes.length; i++) {
+      const el = compareNodeMarkerRefs.current[i];
+      if (!el) continue;
+      const visible = props.layers.nodes && t >= NODE_FRACTIONS[nodes[i].id] - 1e-6;
+      el.classList.toggle("visible", visible);
     }
   }, [props.progress, props.layers.nodes, ready]);
 
@@ -849,6 +898,11 @@ export default function MapCanvas(props: Props) {
     const clearTerrain = () => {
       try {
         map.setTerrain(null);
+        if (compareMapRef.current) compareMapRef.current.setTerrain(null);
+        // 档案图 2D 时收回 DEM 阴影，保持纸面风格
+        if (map.getLayer(COMPARE_HILLSHADE_LAYER_ID)) {
+          map.setLayoutProperty(COMPARE_HILLSHADE_LAYER_ID, "visibility", "none");
+        }
       } catch {
         return;
       }
@@ -862,6 +916,16 @@ export default function MapCanvas(props: Props) {
     const applyTerrain = () => {
       try {
         map.setTerrain({ source: "terrainDem", exaggeration });
+        // 对照图的样式可能尚未加载完（源未注册），单独容错，不能拖垮主图激活
+        if (compareMapRef.current) {
+          try {
+            compareMapRef.current.setTerrain({ source: "terrainDem", exaggeration });
+          } catch {
+            /* mapB 地形源未就绪，style.load 后会同步 */
+          }
+        }
+        // 档案图 3D 时叠加轻量 DEM 阴影，让起伏可感知
+        ensureCompareHillshade(map, { exaggeration: 0.34, visible: true, shadowColor: "#9A8A7C" });
       } catch {
         propsRef.current.onTerrainStatusChange("offline");
         clearTerrain();
@@ -908,6 +972,191 @@ export default function MapCanvas(props: Props) {
       if (!props.terrain3dActive) cancelOnlineTerrain(map);
     };
   }, [props.nodeScene?.terrainMode, props.terrain3dActive, props.terrain3dRequestId, ready]);
+
+  // 古今对照：右侧「当今地形」同步地图（DEM 动态山体阴影 + 高程着色增强）
+  useEffect(() => {    const container = containerRef.current;
+    const mapA = mapRef.current;
+    if (!container || !mapA || !ready) return;
+
+    if (!props.compare) {
+      compareNodeMarkerRefs.current = [];
+      if (compareMapRef.current) {
+        compareMapRef.current.remove();
+        compareMapRef.current = null;
+      }
+      if (compareHostRef.current) {
+        compareHostRef.current.remove();
+        compareHostRef.current = null;
+      }
+      return;
+    }
+
+    if (compareMapRef.current || compareHostRef.current) return;
+
+    const host = document.createElement("div");
+    host.className = "map-compare-host";
+    container.appendChild(host);
+    compareHostRef.current = host;
+
+    const mapB = new maplibregl.Map({
+      container: host,
+      style: buildStyle(hillshadeRef.current, { modern: true }),
+      center: mapA.getCenter(),
+      zoom: mapA.getZoom(),
+      pitch: mapA.getPitch(),
+      bearing: mapA.getBearing(),
+      attributionControl: false,
+    });
+    compareMapRef.current = mapB;
+
+    const sync = (from: MlMap, to: MlMap) => {
+      if (syncingRef.current) return;
+      syncingRef.current = true;
+      to.jumpTo({
+        center: from.getCenter(),
+        zoom: from.getZoom(),
+        pitch: from.getPitch(),
+        bearing: from.getBearing(),
+      });
+      syncingRef.current = false;
+    };
+    const onMoveA = () => sync(mapA, mapB);
+    const onMoveB = () => sync(mapB, mapA);
+    mapA.on("move", onMoveA);
+    mapB.on("move", onMoveB);
+
+    const syncTerrainToB = () => {
+      const exaggeration = terrainExaggerationForMode(propsRef.current.nodeScene?.terrainMode ?? "plain");
+      try {
+        mapB.setTerrain(propsRef.current.terrain3dActive ? { source: "terrainDem", exaggeration } : null);
+      } catch {
+        /* 地形源未就绪 */
+      }
+    };
+
+    mapB.once("style.load", () => {
+      if (compareMapRef.current !== mapB) return;
+      ensureCompareHillshade(mapB, { exaggeration: 0.52, shadowColor: "#7A6552" });
+      paintRouteReveal(mapB, propsRef.current.progress);
+      syncTerrainToB();
+
+      // 「当今」侧地点标注：与档案侧同一套地名数据，让对照可定位
+      compareNodeMarkerRefs.current = [];
+      for (const c of CITY_LABELS) {
+        const el = makeMarker("geo-label city", c.name);
+        new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([c.lon, c.lat]).addTo(mapB);
+      }
+      for (const r of RIVER_LABELS) {
+        const el = makeMarker("geo-label river", r.name);
+        new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([r.lon, r.lat]).addTo(mapB);
+      }
+      for (const landform of LANDFORM_LABELS) {
+        const el = makeMarker("geo-label landform", landform.name);
+        new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([landform.lon, landform.lat]).addTo(mapB);
+      }
+      for (const node of nodes) {
+        const el = makeMarker(
+          "node-marker",
+          `<div class="node-ring"></div><div class="node-dot"></div>
+           <div class="node-label"><span class="node-no">${String(node.seq).padStart(2, "0")}</span>${node.shortTitle}</div>`
+        );
+        el.classList.add("visible");
+        new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat(node.anchor).addTo(mapB);
+        compareNodeMarkerRefs.current.push(el);
+      }
+
+      // 与档案侧一致的地图取点
+      const inspectPopup = new maplibregl.Popup({ closeButton: true, offset: 10, className: "map-inspect-popup" });
+      mapB.on("click", (event) => {
+        let elevation: number | null = null;
+        try {
+          elevation = mapB.queryTerrainElevation(event.lngLat) ?? null;
+        } catch {
+          elevation = null;
+        }
+        const elevationText =
+          elevation === null ? "开启 3D 地形后可读取估算海拔" : "估算海拔 " + Math.round(elevation) + " 米";
+        inspectPopup
+          .setLngLat(event.lngLat)
+          .setHTML(
+            '<strong>当今地形取点</strong><span class="mono">' +
+              event.lngLat.lng.toFixed(4) + ", " + event.lngLat.lat.toFixed(4) +
+              "</span><small>" + elevationText + "</small>"
+          )
+          .addTo(mapB);
+      });
+
+      sync(mapA, mapB);
+    });
+
+    // 分割线：可拖动，默认居中；两侧角标提示左右各是什么
+    const divider = document.createElement("div");
+    divider.className = "map-compare-divider";
+    divider.innerHTML =
+      '<span class="map-compare-badge map-compare-badge-left">1935 · 档案</span>' +
+      '<span class="map-compare-badge map-compare-badge-right">当今 · 测绘</span>' +
+      '<span class="map-compare-grip" aria-hidden="true">⇔</span>';
+    let frac = 0.5;
+    const applyFrac = () => {
+      const pct = Math.round(frac * 10000) / 100;
+      host.style.clipPath = `inset(0 0 0 ${pct}%)`;
+      divider.style.left = `${pct}%`;
+    };
+    applyFrac();
+    container.appendChild(divider);
+
+    let draggingDivider = false;
+    const onDividerDown = (e: PointerEvent) => {
+      draggingDivider = true;
+      try {
+        divider.setPointerCapture(e.pointerId);
+      } catch {
+        /* 合成事件无有效指针 */
+      }
+      e.preventDefault();
+    };
+    const onDividerMove = (e: PointerEvent) => {
+      if (!draggingDivider) return;
+      const rect = container.getBoundingClientRect();
+      frac = Math.max(0.12, Math.min(0.88, (e.clientX - rect.left) / rect.width));
+      applyFrac();
+    };
+    const onDividerUp = (e: PointerEvent) => {
+      draggingDivider = false;
+      try {
+        divider.releasePointerCapture(e.pointerId);
+      } catch {
+        /* 已释放 */
+      }
+    };
+    divider.addEventListener("pointerdown", onDividerDown);
+    divider.addEventListener("pointermove", onDividerMove);
+    divider.addEventListener("pointerup", onDividerUp);
+    divider.addEventListener("pointercancel", onDividerUp);
+
+    return () => {
+      mapA.off("move", onMoveA);
+      mapB.off("move", onMoveB);
+      divider.removeEventListener("pointerdown", onDividerDown);
+      divider.removeEventListener("pointermove", onDividerMove);
+      divider.removeEventListener("pointerup", onDividerUp);
+      divider.removeEventListener("pointercancel", onDividerUp);
+      divider.remove();
+      compareMapRef.current = null;
+      compareHostRef.current = null;
+      compareNodeMarkerRefs.current = [];
+      mapB.remove();
+      host.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.compare, ready]);
+
+  // 氛围层：昼夜/天气随节点切换（夜渡于都河、夹金山的雪、草地的雾…）
+  useEffect(() => {
+    const veil = atmosphereVeilRef.current;
+    if (!veil) return;
+    veil.className = `atmosphere-veil${props.atmosphere ? ` atmo-${props.atmosphere}` : ""}`;
+  }, [props.atmosphere, ready]);
 
   // 巡航：进入或换段时，镜头贴路线低空滑翔到段尾（时长与该段剩余播放时间对齐）。
   useEffect(() => {

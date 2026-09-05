@@ -122,3 +122,54 @@ const MONTH_DAY = new Intl.DateTimeFormat("zh-CN", {
 export function isoToDateLabel(iso: string): string {
   return MONTH_DAY.format(new Date(Date.parse(`${iso}T00:00:00Z`)));
 }
+
+/** —— 行军计程仪 —— */
+import routeGeometry from "./route-geometry.json" with { type: "json" };
+
+const EARTH_RADIUS_KM = 6371;
+
+function haversineKm(a: number[], b: number[]): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b[1] - a[1]);
+  const dLon = toRad(b[0] - a[0]);
+  const lat1 = toRad(a[1]);
+  const lat2 = toRad(b[1]);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
+}
+
+const lineKmCache = new Map<string, number>();
+
+/** 图上一条路线的长度（公里） */
+export function lineKm(lineId: string): number {
+  const cached = lineKmCache.get(lineId);
+  if (cached !== undefined) return cached;
+  const line = routeGeometry.find((l) => l.id === lineId);
+  if (!line) return 0;
+  let km = 0;
+  for (let i = 1; i < line.coordinates.length; i++) {
+    km += haversineKm(line.coordinates[i - 1], line.coordinates[i]);
+  }
+  lineKmCache.set(lineId, km);
+  return km;
+}
+
+/** 时间轴 t 时已按图示路线行进的距离（华里，1 里 = 0.5 公里） */
+export function marchDistanceLi(t: number): number {
+  let km = 0;
+  for (const line of routeGeometry) {
+    const [wa, wb] = LINE_WINDOWS[line.id];
+    const f = Math.max(0, Math.min(1, (t - wa) / (wb - wa)));
+    km += f * lineKm(line.id);
+  }
+  return Math.round(km * 2);
+}
+
+const MARCH_START = Date.parse("1934-10-10T00:00:00Z");
+const MARCH_TOTAL_DAYS = Math.round((T1 - MARCH_START) / 86400000); // 377
+
+/** 时间轴 t → 「长征第 N 天」（自 1934-10-10 中央机关离开瑞金起算） */
+export function marchDayAt(t: number): number {
+  return 1 + Math.min(MARCH_TOTAL_DAYS - 1, Math.round(Math.max(0, Math.min(1, t)) * (MARCH_TOTAL_DAYS - 1)));
+}

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { nodes } from "../src/data/nodes.ts";
-import { sourcesByNode } from "../src/data/sources.ts";
+import { sources, sourcesByNode } from "../src/data/sources.ts";
 import { stories } from "../src/data/stories.ts";
 import {
   getRightPanelPresentation,
@@ -90,26 +90,54 @@ test("node learning wiring creates scene markers and the map-side cartouche cont
   assert.match(cssText, /\.node-scene-cartouche\s*\{[\s\S]*?left: 10px;[\s\S]*?right: 10px;[\s\S]*?width: auto;/);
 });
 
-test("evidence rail model reuses existing node stories, sources, excerpts, and profile data", () => {
+test("evidence rail model reuses existing node stories, sources, and profile data", () => {
   const node = nodes.find((item) => item.id === "node-05");
   assert.ok(node);
 
   const model = buildNodeEvidenceRailModel(node);
 
   assert.equal(model.routeSegments.length, node.segmentIds.length);
-  assert.deepEqual(
-    model.evidenceItems.map((item) => item.text),
-    node.deep.map((item) => item.text),
-    "evidence rail should reuse node.deep excerpts instead of inventing new copy"
-  );
+  for (const segment of model.routeSegments) {
+    assert.deepEqual(
+      segment.sources.map((source) => source.id),
+      segment.sourceIds,
+      "route segment evidence should resolve to registered sources in order"
+    );
+  }
   assert.deepEqual(
     model.relatedStories.map((story) => story.id),
     stories.filter((story) => story.nodeId === node.id).map((story) => story.id),
     "related stories should come from existing story data"
   );
-  assert.equal(model.sourceCount, sourcesByNode(node.id).length);
+  assert.deepEqual(
+    model.nodeSources.map((source) => source.id),
+    sourcesByNode(node.id).map((source) => source.id),
+    "source entry should list every source registered to the node"
+  );
   assert.equal(model.elevationSummary?.profileId, "seg-04a");
   assert.equal(model.elevationSummary?.fromCandidate, true);
+});
+
+test("deep excerpts carry resolvable per-claim citations", () => {
+  for (const node of nodes) {
+    const citedIds = new Set(node.deep.flatMap((block) => block.sourceIds ?? []));
+    assert.ok(citedIds.size >= 2, `${node.id} should cite at least two sources in its deep excerpts`);
+    for (const id of citedIds) {
+      assert.ok(
+        sources.some((source) => source.id === id),
+        `${node.id} cites ${id}, which is missing from the source register`
+      );
+    }
+  }
+});
+
+test("every teaching node carries an attributed quotation", () => {
+  for (const node of nodes) {
+    assert.ok(node.quote, `${node.id} should carry a quotation`);
+    assert.ok(node.quote.text.trim().length >= 6, `${node.id} quotation text is too short`);
+    assert.ok(node.quote.attribution.trim().length >= 6, `${node.id} quotation must carry a traceable attribution`);
+    assert.ok(!node.quote.text.includes("——"), "attribution dash belongs in the attribution field, not the text");
+  }
 });
 
 test("node learning panel exposes desktop split structure, mobile collapse rules, and explicit emphasis controls", async () => {
@@ -129,6 +157,8 @@ test("node learning panel exposes desktop split structure, mobile collapse rules
   assert.match(railText, /onFocus/);
   assert.match(railText, /onBlur/);
   assert.match(railText, /onClick/);
+  assert.doesNotMatch(railText, /evidenceItems/, "the evidence rail must not duplicate the deep excerpts");
+  assert.doesNotMatch(railText, /rail-emphasis-toggle/, "per-section emphasis buttons should not duplicate the toolbar");
 
   assert.match(appText, /useState<LearningEmphasis>\(null\)/);
   assert.match(appText, /learningEmphasis=\{learningEmphasis\}/);

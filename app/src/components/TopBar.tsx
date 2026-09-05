@@ -15,6 +15,8 @@ type Props = {
   onFocusToggle: () => void;
   onInfo: () => void;
   onOpenCatalog: () => void;
+  compareOn: boolean;
+  onCompareToggle: () => void;
 };
 
 type TerrainButtonModel = {
@@ -57,7 +59,7 @@ export function terrainButtonModel(
   if (status === "ready") {
     return {
       label: "开启 3D",
-      title: "在线 3D 地形已就绪",
+      title: "本地 3D 地形已就绪",
       announcement: "3D 地形已就绪",
       busy: false,
       disabled: false,
@@ -68,8 +70,8 @@ export function terrainButtonModel(
   if (status === "offline") {
     return {
       label: "3D 离线/重试",
-      title: "在线 3D 地形暂时离线，点击重试",
-      announcement: "在线 3D 地形暂时离线，可重试",
+      title: "3D 地形暂不可用，点击重试",
+      announcement: "3D 地形暂不可用，可重试",
       busy: false,
       disabled: false,
       pressed: false,
@@ -79,8 +81,8 @@ export function terrainButtonModel(
   if (status === "loading") {
     return {
       label: "3D 加载中",
-      title: "在线 3D 地形后台加载中，点击后就绪时自动开启",
-      announcement: "在线 3D 地形后台加载中",
+      title: "3D 地形后台准备中，点击后就绪时自动开启",
+      announcement: "3D 地形后台准备中",
       busy: true,
       disabled: false,
       pressed: false,
@@ -89,7 +91,7 @@ export function terrainButtonModel(
   }
   return {
     label: "3D 地形",
-    title: "开启在线 3D 地形",
+    title: "开启本地 3D 地形",
     announcement: "当前显示本地地形",
     busy: false,
     disabled: false,
@@ -144,6 +146,14 @@ export default function TopBar(p: Props) {
           disabled={terrainButton.disabled}
         >
           {terrainButton.label}
+        </button>
+        <button
+          className={`tool-btn ${p.compareOn ? "on" : ""}`}
+          onClick={p.onCompareToggle}
+          title="古今对照：左看 1935 纸面档案，右看当今地形，拖动分割线比较"
+          aria-pressed={p.compareOn}
+        >
+          古今对照
         </button>
         <button
           className={`tool-btn ${p.cruising ? "on" : ""}`}

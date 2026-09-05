@@ -692,99 +692,38 @@ test("MapCanvas schedules contour-label retry before returning on transient null
   );
 });
 
-test("ensureOnlineTerrain resolves ready once and reuses the on-demand DEM source", async () => {
-  const { ONLINE_TERRAIN_PROBE_LAYER_ID, ensureOnlineTerrain } = await loadTerrainRuntimeModule();
+test("ensureOnlineTerrain registers the local DEM source once and resolves ready immediately", async () => {
+  const { ensureOnlineTerrain } = await loadTerrainRuntimeModule();
   const map = new FakeMap({ autoSourceLoaded: true });
 
   assert.equal(await ensureOnlineTerrain(map), "ready");
-  assert.equal(map.getLayer(ONLINE_TERRAIN_PROBE_LAYER_ID), undefined);
   assert.equal(await ensureOnlineTerrain(map), "ready");
   assert.deepEqual(map.sourceAdds.map((entry) => entry.id), ["terrainDem"]);
 });
 
-test("online terrain waits for actual DEM tile content instead of source metadata", async () => {
-  const { ONLINE_TERRAIN_PROBE_LAYER_ID, ensureOnlineTerrain } = await loadTerrainRuntimeModule();
-  const map = new FakeMap();
-  const promise = ensureOnlineTerrain(map);
-  assert.ok(map.getLayer(ONLINE_TERRAIN_PROBE_LAYER_ID), "transparent probe should request DEM tile content");
-  let settled = false;
-  void promise.then(() => { settled = true; });
-
-  map.emit("sourcedata", { sourceId: "terrainDem", sourceDataType: "metadata", isSourceLoaded: true });
-  await Promise.resolve();
-  assert.equal(settled, false, "source metadata alone must not mark 3D terrain ready");
-
-  map.emit("sourcedata", {
-    sourceId: "terrainDem",
-    sourceDataType: "content",
-    coord: { canonical: { z: 8, x: 1, y: 1 } },
-    isSourceLoaded: true,
-  });
-  assert.equal(await promise, "ready");
-  assert.equal(map.getLayer(ONLINE_TERRAIN_PROBE_LAYER_ID), undefined);
-});
-
-test("ensureOnlineTerrain resolves offline on timeout without throwing into callers", async () => {
+test("local DEM source points at the pre-extracted corridor pyramid without any probe layer", async () => {
   const { ensureOnlineTerrain } = await loadTerrainRuntimeModule();
   const map = new FakeMap();
-  const originalSetTimeout = globalThis.setTimeout;
-  const originalClearTimeout = globalThis.clearTimeout;
-  globalThis.setTimeout = (callback, _delay, ...args) => {
-    queueMicrotask(() => callback(...args));
-    return 1;
-  };
-  globalThis.clearTimeout = () => {};
 
-  try {
-    assert.equal(await ensureOnlineTerrain(map), "offline");
-  } finally {
-    globalThis.setTimeout = originalSetTimeout;
-    globalThis.clearTimeout = originalClearTimeout;
-  }
-
-  assert.equal(map.getSource("terrainDem"), undefined);
+  assert.equal(await ensureOnlineTerrain(map), "ready", "local DEM must not wait on network content");
+  const entry = map.sourceAdds.find((item) => item.id === "terrainDem");
+  assert.ok(entry, "DEM source should be registered");
+  assert.deepEqual(entry.source.tiles, ["terrain/dem/{z}/{x}/{y}.png"]);
+  assert.equal(entry.source.encoding, "terrarium");
+  assert.equal(entry.source.minzoom, 5);
+  assert.equal(entry.source.maxzoom, 8);
+  assert.equal(map.getLayer("terrain-dem-probe"), undefined, "no probe layer should ever be added");
 });
 
-test("cancelOnlineTerrain clears pending listeners and timers before map removal", async () => {
+test("cancelOnlineTerrain stays safe without pending work and keeps the local DEM source", async () => {
   const { cancelOnlineTerrain, ensureOnlineTerrain } = await loadTerrainRuntimeModule();
   const map = new FakeMap();
-  const pendingTimers = new Map();
-  const clearedTimers = [];
-  let nextTimerId = 1;
-  const originalSetTimeout = globalThis.setTimeout;
-  const originalClearTimeout = globalThis.clearTimeout;
-  globalThis.setTimeout = (callback, delay, ...args) => {
-    const timer = { callback, delay, args };
-    const timerId = nextTimerId++;
-    pendingTimers.set(timerId, timer);
-    return timerId;
-  };
-  globalThis.clearTimeout = (timerId) => {
-    clearedTimers.push(timerId);
-    pendingTimers.delete(timerId);
-  };
 
-  try {
-    const promise = ensureOnlineTerrain(map);
-    assert.equal(map.listenerCount("sourcedata"), 1);
-    assert.equal(map.listenerCount("error"), 1);
-    assert.equal(pendingTimers.size, 1);
-
-    cancelOnlineTerrain(map);
-    assert.equal(map.getSource("terrainDem"), undefined);
-    map.remove();
-    map.emit("sourcedata", { sourceId: "terrainDem", isSourceLoaded: true });
-    map.emit("error", { sourceId: "terrainDem" });
-
-    assert.equal(map.listenerCount("sourcedata"), 0);
-    assert.equal(map.listenerCount("error"), 0);
-    assert.equal(pendingTimers.size, 0);
-    assert.equal(clearedTimers.length, 1);
-    assert.equal(await promise, "cancelled");
-  } finally {
-    globalThis.setTimeout = originalSetTimeout;
-    globalThis.clearTimeout = originalClearTimeout;
-  }
+  assert.equal(await ensureOnlineTerrain(map), "ready");
+  cancelOnlineTerrain(map);
+  assert.ok(map.getSource("terrainDem"), "cancel must not tear down the local DEM source");
+  assert.equal(await ensureOnlineTerrain(map), "ready", "calls after cancel stay ready");
+  assert.deepEqual(map.sourceAdds.map((entry) => entry.id), ["terrainDem"]);
 });
 
 test("runtime helpers return safely after map removal", async () => {
@@ -801,18 +740,16 @@ test("runtime helpers return safely after map removal", async () => {
   });
 });
 
-test("cancelling a pending terrain load resets the source so a later retry can reach ready", async () => {
-  const { cancelOnlineTerrain, ensureOnlineTerrain } = await loadTerrainRuntimeModule();
+test("resetOnlineTerrain removes the source so a later ensure re-registers it cleanly", async () => {
+  const { ensureOnlineTerrain, resetOnlineTerrain } = await loadTerrainRuntimeModule();
   const map = new FakeMap();
 
-  const firstAttempt = ensureOnlineTerrain(map);
-  assert.ok(map.getSource("terrainDem"), "first attempt should add the DEM source");
+  assert.equal(await ensureOnlineTerrain(map), "ready");
+  assert.ok(map.getSource("terrainDem"));
 
-  cancelOnlineTerrain(map);
-  assert.equal(await firstAttempt, "cancelled");
-  assert.equal(map.getSource("terrainDem"), undefined, "cancel should remove the half-loaded DEM source");
+  resetOnlineTerrain(map);
+  assert.equal(map.getSource("terrainDem"), undefined, "reset should remove the DEM source");
 
-  map.options.autoSourceLoaded = true;
   assert.equal(await ensureOnlineTerrain(map), "ready");
   assert.ok(map.getSource("terrainDem"), "retry should recreate the DEM source");
   assert.deepEqual(map.sourceAdds.map((entry) => entry.id), ["terrainDem", "terrainDem"]);
@@ -911,10 +848,15 @@ test("gesture-cancelled terrain activation recovers to local and later ready wit
 test("terrain exaggeration stays within the expected band for each terrain mode", async () => {
   const { terrainExaggerationForMode } = await loadTerrainRuntimeModule();
 
-  assert.equal(terrainExaggerationForMode("plain"), 1.15);
-  assert.equal(terrainExaggerationForMode("river-valley"), 1.42);
-  assert.equal(terrainExaggerationForMode("mountain"), 1.28);
-  assert.equal(terrainExaggerationForMode("plateau"), 1.32);
+  // 夸张度按观展距离调校（≥2 倍），确保总览与节点距离下起伏可感知
+  assert.equal(terrainExaggerationForMode("plain"), 2.0);
+  assert.equal(terrainExaggerationForMode("river-valley"), 2.4);
+  assert.equal(terrainExaggerationForMode("mountain"), 2.2);
+  assert.equal(terrainExaggerationForMode("plateau"), 2.3);
+  for (const mode of ["plain", "river-valley", "mountain", "plateau"]) {
+    const value = terrainExaggerationForMode(mode);
+    assert.ok(value >= 1.8 && value <= 2.5, `${mode} exaggeration ${value} should stay in the 1.8-2.5 band`);
+  }
 });
 
 test("TopBar exposes terrain status text, pressed state, busy semantics, and retry copy", async () => {
@@ -922,7 +864,7 @@ test("TopBar exposes terrain status text, pressed state, busy semantics, and ret
 
   assert.deepEqual(terrainButtonModel("local", false, false), {
     label: "3D 地形",
-    title: "开启在线 3D 地形",
+    title: "开启本地 3D 地形",
     announcement: "当前显示本地地形",
     busy: false,
     disabled: false,

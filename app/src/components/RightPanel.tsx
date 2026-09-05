@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from "react";
 import { nodes, type NodeUnit, type ContentTag } from "../data/nodes";
-import { sources, sourcesByNode } from "../data/sources";
+import { sources, sourcesByNode, type SourceEntry } from "../data/sources";
 import { stories, type StoryPoint } from "../data/stories";
 import { getStoryMarkerPresentation } from "../map/markerPresentation";
 import { getRightPanelPresentation } from "../layout/rightPanelPresentation";
@@ -27,6 +27,24 @@ export function TagChip({ tag }: { tag: ContentTag }) {
   return <span className={`tag tag-${tag}`}>{CONTENT_TAG_LABEL[tag]}</span>;
 }
 
+const RIGHTS_STATUS_LABEL: Record<SourceEntry["rightsStatus"], string> = {
+  cleared: "已获授权",
+  "permission-needed": "授权沟通中",
+  "citation-only": "仅引用 · 不复制原文",
+  blocked: "不可复用",
+};
+
+// 深入摘录的脚注编号：按本节点内首次引用顺序排号
+function buildCitationNumbers(node: NodeUnit) {
+  const ordered: string[] = [];
+  for (const block of node.deep) {
+    for (const id of block.sourceIds ?? []) {
+      if (!ordered.includes(id)) ordered.push(id);
+    }
+  }
+  return new Map(ordered.map((id, index) => [id, index + 1]));
+}
+
 type Props = {
   view: RightView;
   depth: "concise" | "deep";
@@ -43,6 +61,8 @@ type Props = {
 
 function NodeCard({ node, p }: { node: NodeUnit; p: Props }) {
   const nodeSources = sourcesByNode(node.id);
+  const citationNumbers = buildCitationNumbers(node);
+  const hasCitations = node.deep.some((block) => (block.sourceIds?.length ?? 0) > 0);
   return (
     <article className="node-card">
       <div className="node-card-shell">
@@ -89,14 +109,60 @@ function NodeCard({ node, p }: { node: NodeUnit; p: Props }) {
               {node.coreQuestion}
             </blockquote>
 
+            {node.quote && (
+              <figure className="node-quote">
+                <span className="quote-mark" aria-hidden="true">
+                  ❝
+                </span>
+                <blockquote>{node.quote.text}</blockquote>
+                <figcaption>
+                  <span className="quote-seal" aria-hidden="true">
+                    长征
+                  </span>
+                  <span className="quote-attribution">{node.quote.attribution}</span>
+                </figcaption>
+              </figure>
+            )}
+
+            {node.sensory && (
+              <figure className="node-sensory">
+                <span className="sensory-mark">你身在其中</span>
+                <p>{node.sensory.text}</p>
+                <figcaption>{node.sensory.attribution}</figcaption>
+              </figure>
+            )}
+
             {p.depth === "deep" && (
               <section className="deep-blocks">
                 {node.deep.map((b, i) => (
                   <p key={i} className="deep-item">
                     <TagChip tag={b.tag} />
-                    <span>{b.text}</span>
+                    <span>
+                      {b.text}
+                      {(b.sourceIds ?? []).map((id) => {
+                        const source = sources.find((item) => item.id === id);
+                        const num = citationNumbers.get(id);
+                        if (!source || !num) return null;
+                        return (
+                          <a
+                            key={id}
+                            className="deep-source-mark"
+                            href={source.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`出处〔${num}〕${source.title}（${source.org}），打开原始页面`}
+                            title={`出处〔${num}〕${source.title} · ${source.org}`}
+                          >
+                            〔{num}〕
+                          </a>
+                        );
+                      })}
+                    </span>
                   </p>
                 ))}
+                {hasCitations && (
+                  <p className="deep-sources-hint">〔n〕为该条陈述的依据来源，点击打开出处页面。</p>
+                )}
               </section>
             )}
 
@@ -122,7 +188,6 @@ function NodeCard({ node, p }: { node: NodeUnit; p: Props }) {
             node={node}
             activeEmphasis={p.learningEmphasis}
             onEmphasisChange={p.onLearningEmphasisChange}
-            onOpenSources={p.onOpenSources}
             onSelectStory={p.onSelectStory}
           />
         </div>
@@ -243,9 +308,8 @@ function SourcesCard({ nodeId, p }: { nodeId?: string; p: Props }) {
   const list = filter === "all" ? sources : sourcesByNode(filter);
   return (
     <div className="sources-card">
-      <h2>史料与出处</h2>
       <p className="sources-sub">
-        每个节点 30 秒内可找到来源。此处仅展示书目与链接，不复制受版权保护的原文与影像。
+        每个节点 30 秒内可找到来源。此处仅展示书目与链接及各条来源支持的内容，不复制受版权保护的原文与影像。
       </p>
       <div className="filter-row" role="tablist" aria-label="按节点筛选">
         <button className={`filter-chip ${filter === "all" ? "active" : ""}`} onClick={() => setFilter("all")}>
@@ -265,9 +329,8 @@ function SourcesCard({ nodeId, p }: { nodeId?: string; p: Props }) {
         {list.map((s) => (
           <article key={s.id} className="source-item">
             <div className="source-top">
-              <span className="mono source-id">{s.id}</span>
               <span className="chip chip-rel">可靠性 {s.reliability === "high" ? "高" : "中"}</span>
-              <span className="chip chip-rights">引用署名</span>
+              <span className="chip chip-rights">{RIGHTS_STATUS_LABEL[s.rightsStatus]}</span>
             </div>
             <h3>{s.title}</h3>
             <p className="source-org">
@@ -275,11 +338,12 @@ function SourcesCard({ nodeId, p }: { nodeId?: string; p: Props }) {
               {s.date ? ` · ${s.date}` : ""}
             </p>
             <p className="source-claim">支持：{s.claim}</p>
+            {s.note && <p className="source-note">备注：{s.note}</p>}
             <div className="source-foot">
               <a className="ghost-btn" href={s.url} target="_blank" rel="noreferrer">
                 打开原始页面 ↗
               </a>
-              {s.note && <span className="source-note">{s.note}</span>}
+              <span className="mono source-id">{s.id}</span>
             </div>
           </article>
         ))}

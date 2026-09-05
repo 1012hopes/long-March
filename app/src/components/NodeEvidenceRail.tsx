@@ -3,7 +3,6 @@ import type { NodeUnit } from "../data/nodes";
 import { getStoryMarkerPresentation } from "../map/markerPresentation";
 import {
   buildNodeEvidenceRailModel,
-  CONTENT_TAG_LABEL,
   LEARNING_EMPHASIS_OPTIONS,
   type LearningEmphasis,
   type LearningEmphasisKey,
@@ -17,7 +16,6 @@ type ToolbarProps = {
 
 type Props = ToolbarProps & {
   node: NodeUnit;
-  onOpenSources: (nodeId?: string) => void;
   onSelectStory: (storyId: string) => void;
 };
 
@@ -67,7 +65,6 @@ export default function NodeEvidenceRail({
   node,
   activeEmphasis,
   onEmphasisChange,
-  onOpenSources,
   onSelectStory,
 }: Props) {
   const model = buildNodeEvidenceRailModel(node);
@@ -83,14 +80,6 @@ export default function NodeEvidenceRail({
       >
         <div className="rail-heading">
           <h3>路线判定</h3>
-          <button
-            type="button"
-            className={`rail-emphasis-toggle ${activeEmphasis === "route" ? "active" : ""}`}
-            aria-pressed={activeEmphasis === "route"}
-            onClick={() => toggleEmphasis(activeEmphasis, "route", onEmphasisChange)}
-          >
-            看路线
-          </button>
         </div>
         <div className="route-segment-list">
           {model.routeSegments.map((segment) => (
@@ -98,7 +87,19 @@ export default function NodeEvidenceRail({
               <span className="route-segment-date mono">{segment.displayDateLabel}</span>
               <div className="route-segment-meta">
                 <span className={`cert-chip cert-${segment.certainty}`}>{segment.certaintyLabel}</span>
-                <span className="fine mono">{segment.sourceCount} 条依据</span>
+                <details className="route-segment-sources">
+                  <summary className="fine mono">{segment.sourceCount} 条依据</summary>
+                  <ul className="route-source-list">
+                    {segment.sources.map((source) => (
+                      <li key={source.id}>
+                        <a href={source.url} target="_blank" rel="noreferrer" title={source.title}>
+                          <strong>{source.title}</strong>
+                          <small>{source.org}</small>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               </div>
               <p>{segment.reasoning}</p>
             </article>
@@ -115,14 +116,6 @@ export default function NodeEvidenceRail({
       >
         <div className="rail-heading">
           <h3>地形读法</h3>
-          <button
-            type="button"
-            className={`rail-emphasis-toggle ${activeEmphasis === "terrain" ? "active" : ""}`}
-            aria-pressed={activeEmphasis === "terrain"}
-            onClick={() => toggleEmphasis(activeEmphasis, "terrain", onEmphasisChange)}
-          >
-            看地形
-          </button>
         </div>
         {model.terrainLabel && <p className="terrain-label">{model.terrainLabel}</p>}
         <p className="terrain-cue">{model.sceneCue}</p>
@@ -137,34 +130,6 @@ export default function NodeEvidenceRail({
             </span>
           </div>
         )}
-      </section>
-
-      <section
-        className="rail-section rail-section-evidence"
-        onMouseEnter={() => onEmphasisChange("evidence")}
-        onMouseLeave={() => onEmphasisChange(null)}
-        onFocus={() => onEmphasisChange("evidence")}
-        onBlur={(event) => handleEmphasisBlur(event, onEmphasisChange)}
-      >
-        <div className="rail-heading">
-          <h3>证据摘录</h3>
-          <button
-            type="button"
-            className={`rail-emphasis-toggle ${activeEmphasis === "evidence" ? "active" : ""}`}
-            aria-pressed={activeEmphasis === "evidence"}
-            onClick={() => toggleEmphasis(activeEmphasis, "evidence", onEmphasisChange)}
-          >
-            看证据
-          </button>
-        </div>
-        <div className="rail-evidence-list">
-          {model.evidenceItems.map((item, index) => (
-            <p className="rail-evidence-item" key={index}>
-              <span className={`tag tag-${item.tag}`}>{CONTENT_TAG_LABEL[item.tag]}</span>
-              <span>{item.text}</span>
-            </p>
-          ))}
-        </div>
       </section>
 
       {model.relatedStories.length > 0 && (
@@ -194,17 +159,26 @@ export default function NodeEvidenceRail({
       <section className="rail-section rail-section-sources">
         <div className="rail-heading">
           <h3>史料入口</h3>
-          <span className="fine mono">{model.sourceCount} 条</span>
+          <span className="fine mono">{model.nodeSources.length} 条</span>
         </div>
-        {model.sourceLead && (
-          <p className="rail-source-lead">
-            <strong>{model.sourceLead.title}</strong>
-            <span>{model.sourceLead.org}</span>
-          </p>
-        )}
-        <button type="button" className="ghost-btn rail-source-btn" onClick={() => onOpenSources(node.id)}>
-          打开本节点全部史料
-        </button>
+        <div className="rail-source-list">
+          {model.nodeSources.map((source) => (
+            <a
+              className="rail-source-link"
+              key={source.id}
+              href={source.url}
+              target="_blank"
+              rel="noreferrer"
+              title={source.title}
+            >
+              <span className="rail-source-body">
+                <strong>{source.title}</strong>
+                <small>{source.org}{source.date ? ` · ${source.date}` : ""}</small>
+              </span>
+              <span aria-hidden="true">↗</span>
+            </a>
+          ))}
+        </div>
       </section>
     </aside>
   );

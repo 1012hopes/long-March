@@ -4353,8 +4353,7 @@ summary:focus-visible {
   font-weight: 700;
 }
 
-.route-segment-list,
-.rail-evidence-list {
+.route-segment-list {
   display: flex;
   flex-direction: column;
   gap: 9px;
@@ -4385,8 +4384,7 @@ summary:focus-visible {
 }
 
 .route-segment-card p,
-.terrain-cue,
-.rail-source-lead {
+.terrain-cue {
   font-size: 12.5px;
   line-height: 1.65;
 }
@@ -4397,6 +4395,54 @@ summary:focus-visible {
   font: 700 11px/1.4 var(--mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.route-segment-sources summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+  user-select: none;
+}
+
+.route-segment-sources summary::marker {
+  color: var(--ink-soft);
+}
+
+.route-segment-sources[open] summary {
+  color: var(--evidence-blue);
+}
+
+.route-source-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.route-source-list a {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.route-source-list strong {
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.route-source-list a:hover strong,
+.route-source-list a:focus-visible strong {
+  color: var(--evidence-blue);
+  text-decoration: underline;
+}
+
+.route-source-list small {
+  color: var(--ink-soft);
+  font-size: 10px;
 }
 
 .rail-elevation-summary {
@@ -4414,33 +4460,108 @@ summary:focus-visible {
   letter-spacing: 0.1em;
 }
 
-.rail-evidence-item {
+.rail-source-list {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
   gap: 8px;
-  font-size: 12.5px;
-  line-height: 1.7;
 }
 
-.rail-source-lead {
+.rail-source-link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(201, 193, 179, 0.75);
+  border-radius: 6px;
+  background: rgba(252, 250, 245, 0.88);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.rail-source-link:hover,
+.rail-source-link:focus-visible {
+  border-color: rgba(49, 94, 120, 0.5);
+  box-shadow: 0 6px 14px rgba(49, 94, 120, 0.1);
+}
+
+.rail-source-body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-bottom: 10px;
+  min-width: 0;
 }
 
-.rail-source-lead span {
+.rail-source-body strong {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.rail-source-body small {
   color: var(--ink-soft);
+  font-size: 10.5px;
 }
 
-.rail-source-btn {
-  width: 100%;
-  text-align: center;
+.rail-source-link > span:last-child {
+  color: var(--ink-soft);
+  flex: none;
 }
 
 .node-footer {
   margin-top: auto;
   padding-top: 4px;
+}
+
+/* —— 节点学习：深入摘录的来源脚注 —— */
+.deep-source-marks,
+.deep-source-mark {
+  display: inline;
+}
+
+.deep-source-mark {
+  margin-left: 3px;
+  color: var(--evidence-blue);
+  font-size: 12px;
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(49, 94, 120, 0.55);
+  white-space: nowrap;
+}
+
+.deep-source-mark:hover,
+.deep-source-mark:focus-visible {
+  color: var(--route-red);
+  border-bottom-color: var(--route-red);
+}
+
+.deep-sources-hint {
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* —— 面板页脚：滚动期间固定在面板底部 —— */
+.node-card .node-footer {
+  position: sticky;
+  bottom: 0;
+  margin: 16px -20px 0;
+  padding: 12px 20px;
+  background: var(--paper-light);
+  border-top: 1px solid rgba(201, 193, 179, 0.7);
+  box-shadow: 0 -6px 12px rgba(28, 29, 27, 0.05);
+  z-index: 2;
+}
+
+.sources-card .source-note {
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.sources-card .source-foot {
+  justify-content: space-between;
+  align-items: baseline;
 }
 
 .map-canvas.emphasis-route .geo-label,
@@ -4517,4 +4638,578 @@ summary:focus-visible {
   .map-scene-annotation {
     transition: none !important;
   }
+}
+
+/* —— 古今对照：双图分割 —— */
+.map-compare-host {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.map-compare-host .maplibregl-canvas-container {
+  position: absolute;
+  inset: 0;
+}
+
+.map-compare-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  z-index: 6;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.map-compare-divider::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -1.5px;
+  width: 3px;
+  background: linear-gradient(
+    180deg,
+    rgba(166, 50, 43, 0.12),
+    rgba(166, 50, 43, 0.85) 28%,
+    rgba(166, 50, 43, 0.85) 72%,
+    rgba(166, 50, 43, 0.12)
+  );
+}
+
+.map-compare-grip {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--paper-light);
+  border: 1.5px solid var(--route-red);
+  color: var(--route-red);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  box-shadow: 0 6px 16px rgba(28, 29, 27, 0.18);
+  user-select: none;
+}
+
+/* —— 节点名句块 —— */
+.node-quote {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--route-red);
+  background: rgba(166, 50, 43, 0.05);
+  border-radius: 0 6px 6px 0;
+}
+
+.node-quote blockquote {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--ink);
+}
+
+.node-quote figcaption {
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* —— 古今对照导读卡 —— */
+.compare-guide {
+  position: absolute;
+  left: 352px;
+  top: 152px;
+  width: 300px;
+  z-index: 8;
+  padding: 14px 16px 12px;
+  border: 1px solid rgba(201, 193, 179, 0.85);
+  border-radius: 8px;
+  background: rgba(252, 250, 245, 0.96);
+  box-shadow: 0 10px 24px rgba(28, 29, 27, 0.14);
+}
+
+.compare-guide h3 {
+  margin: 0 0 8px;
+  color: var(--route-red);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+}
+
+.compare-guide-quote {
+  margin: 0 0 10px;
+  padding: 9px 11px;
+  border-left: 3px solid var(--route-red);
+  background: rgba(166, 50, 43, 0.05);
+  border-radius: 0 6px 6px 0;
+}
+
+.compare-guide-quote blockquote {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+.compare-guide-quote figcaption {
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 10.5px;
+}
+
+.compare-guide dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.compare-guide dt {
+  color: var(--evidence-blue);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.compare-guide dd {
+  margin: 2px 0 0;
+  color: var(--ink);
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+.compare-guide-fine {
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(201, 193, 179, 0.85);
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.app.left-rail .compare-guide {
+  left: 108px;
+}
+
+.app.learning-focus .compare-guide {
+  left: 16px;
+}
+
+@media (max-width: 900px) {
+  .compare-guide {
+    display: none;
+  }
+}
+
+/* —— 名句排版精化：楷体 + 大引号 + 印章式出处 —— */
+.node-quote {
+  position: relative;
+  margin: 0;
+  padding: 13px 74px 10px 40px;
+  border: none;
+  background: linear-gradient(135deg, rgba(166, 50, 43, 0.08), rgba(166, 50, 43, 0.03));
+  border-radius: 6px;
+}
+
+.node-quote .quote-mark {
+  position: absolute;
+  left: 10px;
+  top: 4px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 30px;
+  line-height: 1;
+  color: rgba(166, 50, 43, 0.42);
+}
+
+.node-quote blockquote {
+  margin: 0;
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", serif;
+  font-size: 15.5px;
+  line-height: 1.9;
+  color: var(--ink);
+}
+
+.node-quote figcaption {
+  margin-top: 7px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.node-quote .quote-seal {
+  flex: none;
+  writing-mode: vertical-rl;
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", serif;
+  font-size: 10px;
+  line-height: 1.1;
+  padding: 4px 2px;
+  color: #fcfaf5;
+  background: var(--route-red);
+  border-radius: 2px;
+  letter-spacing: 2px;
+  box-shadow: 0 1px 3px rgba(166, 50, 43, 0.4);
+}
+
+/* —— 对照分割线精化：渐变线 + 双色手柄 —— */
+.map-compare-divider::before {
+  background: linear-gradient(
+    180deg,
+    rgba(166, 50, 43, 0.04),
+    rgba(166, 50, 43, 0.9) 24%,
+    rgba(166, 50, 43, 0.9) 58%,
+    rgba(49, 94, 120, 0.85) 88%,
+    rgba(49, 94, 120, 0.08)
+  );
+  box-shadow: 0 0 10px rgba(28, 29, 27, 0.18);
+}
+
+.map-compare-grip {
+  background: linear-gradient(90deg, rgba(166, 50, 43, 0.94) 0 50%, rgba(49, 94, 120, 0.94) 50% 100%);
+  color: #fcfaf5;
+  border: 2px solid #fcfaf5;
+  box-shadow: 0 6px 16px rgba(28, 29, 27, 0.24), 0 0 0 1px rgba(28, 29, 27, 0.08);
+}
+
+.map-compare-badge {
+  position: absolute;
+  top: 14px;
+  white-space: nowrap;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 4px 9px;
+  border-radius: 4px;
+  background: rgba(252, 250, 245, 0.95);
+  box-shadow: 0 4px 10px rgba(28, 29, 27, 0.14);
+  pointer-events: none;
+}
+
+.map-compare-badge-left {
+  right: 10px;
+  color: var(--route-red);
+  border: 1px solid rgba(166, 50, 43, 0.4);
+}
+
+.map-compare-badge-right {
+  left: 10px;
+  color: var(--evidence-blue);
+  border: 1px solid rgba(49, 94, 120, 0.4);
+}
+
+/* —— 导读卡：纸纹底 + 楷体引句 + 栏目标记 —— */
+.compare-guide {
+  background:
+    linear-gradient(180deg, rgba(252, 250, 245, 0.97), rgba(247, 243, 233, 0.97)),
+    repeating-linear-gradient(0deg, rgba(28, 29, 27, 0.016) 0 1px, transparent 1px 6px);
+}
+
+.compare-guide h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compare-guide h3::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(166, 50, 43, 0.55), transparent);
+}
+
+.compare-guide dt::before {
+  content: "▍";
+  color: var(--route-red);
+  margin-right: 3px;
+}
+
+.compare-guide-quote blockquote {
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", serif;
+  font-size: 14px;
+}
+
+/* —— 「行至诗句」浮现卡 —— */
+.quote-float {
+  position: absolute;
+  left: 352px;
+  bottom: 132px;
+  z-index: 8;
+  width: 300px;
+  margin: 0;
+  padding: 12px 14px 11px;
+  border: 1px solid rgba(166, 50, 43, 0.42);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(252, 250, 245, 0.97), rgba(247, 243, 233, 0.97)),
+    repeating-linear-gradient(0deg, rgba(28, 29, 27, 0.016) 0 1px, transparent 1px 6px);
+  box-shadow: 0 12px 28px rgba(28, 29, 27, 0.18);
+  pointer-events: none;
+  animation: quoteFloat 5.4s ease forwards;
+}
+
+.app.left-rail .quote-float {
+  left: 108px;
+}
+
+.app.learning-focus .quote-float {
+  left: 16px;
+}
+
+.quote-float blockquote {
+  margin: 0;
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", serif;
+  font-size: 14.5px;
+  line-height: 1.85;
+  color: var(--ink);
+}
+
+.quote-float figcaption {
+  margin-top: 5px;
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+@keyframes quoteFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  10% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  82% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quote-float {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* —— 氛围层：昼夜/天气（随节点切换） —— */
+.atmosphere-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+
+.atmosphere-veil.atmo-night {
+  opacity: 1;
+  background: linear-gradient(180deg, rgba(24, 38, 74, 0.45), rgba(8, 16, 38, 0.55));
+  mix-blend-mode: multiply;
+}
+
+.atmosphere-veil.atmo-overcast {
+  opacity: 1;
+  background: rgba(96, 106, 112, 0.32);
+  mix-blend-mode: multiply;
+}
+
+.atmosphere-veil.atmo-fog {
+  opacity: 1;
+  background: rgba(206, 214, 204, 0.45);
+  mix-blend-mode: screen;
+}
+
+.atmosphere-veil.atmo-storm {
+  opacity: 1;
+  background: rgba(52, 62, 72, 0.4);
+  mix-blend-mode: multiply;
+}
+
+.atmosphere-veil.atmo-haze {
+  opacity: 1;
+  background: rgba(224, 192, 146, 0.3);
+  mix-blend-mode: soft-light;
+}
+
+.atmosphere-veil.atmo-snow {
+  opacity: 1;
+  background: rgba(235, 242, 250, 0.45);
+  mix-blend-mode: screen;
+}
+
+/* —— 行军计程仪 —— */
+.march-odometer {
+  position: absolute;
+  left: 352px;
+  bottom: 132px;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 14px;
+  border: 1px solid rgba(49, 94, 120, 0.42);
+  border-radius: 8px;
+  background: rgba(252, 250, 245, 0.95);
+  box-shadow: 0 8px 20px rgba(28, 29, 27, 0.14);
+  font-variant-numeric: tabular-nums;
+}
+
+.march-odometer strong {
+  font-family: var(--serif);
+  font-size: 14px;
+  color: var(--route-red);
+}
+
+.march-odometer span {
+  color: var(--ink);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.app.left-rail .march-odometer {
+  left: 108px;
+}
+
+.app.learning-focus .march-odometer {
+  left: 16px;
+}
+
+/* 诗句浮现卡在计程仪上方 */
+.quote-float {
+  bottom: 252px;
+}
+
+/* —— 亲历者感官卡 —— */
+.node-sensory {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--evidence-blue);
+  background: rgba(49, 94, 120, 0.05);
+  border-radius: 0 6px 6px 0;
+}
+
+.node-sensory .sensory-mark {
+  display: block;
+  color: var(--evidence-blue);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.node-sensory p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.node-sensory figcaption {
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+/* —— 终点总结卡 —— */
+.finale-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9;
+  width: min(430px, calc(100vw - 40px));
+  padding: 22px 26px 16px;
+  border: 1px solid rgba(166, 50, 43, 0.5);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(252, 250, 245, 0.98), rgba(247, 243, 233, 0.98)),
+    repeating-linear-gradient(0deg, rgba(28, 29, 27, 0.016) 0 1px, transparent 1px 6px);
+  box-shadow: 0 18px 44px rgba(28, 29, 27, 0.3);
+}
+
+.finale-card .finale-date {
+  margin: 0 0 4px;
+  color: var(--route-red);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+.finale-card h3 {
+  margin: 0 0 12px;
+  font-family: var(--serif);
+  font-size: 22px;
+  color: var(--ink);
+}
+
+.finale-card ul {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.finale-card li {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.finale-card li::before {
+  content: "—";
+  color: var(--route-red);
+  margin-right: 8px;
+}
+
+.finale-card .finale-quote {
+  margin: 0 0 4px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--route-red);
+  background: rgba(166, 50, 43, 0.05);
+  border-radius: 0 6px 6px 0;
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", serif;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+.finale-card .finale-attribution {
+  margin: 0 0 10px;
+  color: var(--ink-soft);
+  font-size: 10.5px;
+}
+
+.finale-card .finale-fine {
+  margin: 0 0 12px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(201, 193, 179, 0.85);
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.finale-card .finale-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.app.learning-focus .finale-card {
+  left: 22.5%;
 }
