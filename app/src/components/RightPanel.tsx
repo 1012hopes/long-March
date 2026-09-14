@@ -1,11 +1,16 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { nodes, type NodeUnit, type ContentTag } from "../data/nodes";
 import { sources, sourcesByNode, type SourceEntry } from "../data/sources";
 import { stories, type StoryPoint } from "../data/stories";
 import { getStoryMarkerPresentation } from "../map/markerPresentation";
 import { getRightPanelPresentation } from "../layout/rightPanelPresentation";
 import NodeEvidenceRail, { LearningEmphasisToolbar } from "./NodeEvidenceRail";
+import PlaceRouteStrip from "./PlaceRouteStrip";
 import { CONTENT_TAG_LABEL, type LearningEmphasis } from "./nodeLearning";
+import { PRECISION_CHIP_LABEL, type PrecisionKind } from "../map/precisionExplain";
+import { BEAT_EMPHASIS, BEAT_LABEL, type NarrativeBeat } from "../map/narrativeSync";
+
+const BEAT_ORDER: NarrativeBeat[] = ["intro", "question", "quote", "sensory", "deep", "close"];
 
 export type RightView =
   | { type: "node"; nodeId: string }
@@ -56,6 +61,8 @@ type Props = {
   onPrevNext: (dir: -1 | 1) => void;
   learningEmphasis: LearningEmphasis;
   onLearningEmphasisChange: (value: LearningEmphasis) => void;
+  precisionEmphasis: PrecisionKind | null;
+  onPrecisionToggle: (kind: PrecisionKind) => void;
   tourChrome?: { index: number; total: number; stopTitle: string } | null;
 };
 
@@ -63,24 +70,82 @@ function NodeCard({ node, p }: { node: NodeUnit; p: Props }) {
   const nodeSources = sourcesByNode(node.id);
   const citationNumbers = buildCitationNumbers(node);
   const hasCitations = node.deep.some((block) => (block.sourceIds?.length ?? 0) > 0);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const [activeBeat, setActiveBeat] = useState<NarrativeBeat>("intro");
+  const syncPausedUntilRef = useRef(0);
+  const emphasisCbRef = useRef(p.onLearningEmphasisChange);
+  emphasisCbRef.current = p.onLearningEmphasisChange;
+
+  const handleManualEmphasis = (value: LearningEmphasis) => {
+    syncPausedUntilRef.current = Date.now() + 12000;
+    emphasisCbRef.current(value);
+  };
+
+  useEffect(() => {
+    const root = bodyRef.current;
+    if (!root) return;
+    const sections = Array.from(root.querySelectorAll<HTMLElement>("[data-beat]"));
+    if (sections.length === 0) return;
+
+    const pickBeat = () => {
+      if (Date.now() < syncPausedUntilRef.current) return;
+      const topPad = 96;
+      let current: NarrativeBeat = "intro";
+      for (const el of sections) {
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= topPad + 24) {
+          const beat = el.dataset.beat as NarrativeBeat | undefined;
+          if (beat) current = beat;
+        }
+      }
+      setActiveBeat((prev) => {
+        if (prev === current) return prev;
+        emphasisCbRef.current(BEAT_EMPHASIS[current]);
+        return current;
+      });
+    };
+
+    const observer = new IntersectionObserver(pickBeat, {
+      root: null,
+      rootMargin: "-15% 0px -55% 0px",
+      threshold: [0, 0.25, 0.5, 1],
+    });
+    for (const el of sections) observer.observe(el);
+    const onScroll = () => pickBeat();
+    window.addEventListener("scroll", onScroll, true);
+    pickBeat();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [node.id]);
+
+  const beatIndex = Math.max(0, BEAT_ORDER.indexOf(activeBeat));
+  const beatLeft = `${(beatIndex / (BEAT_ORDER.length - 1)) * 100}%`;
+
   return (
-    <article className="node-card">
+    <article className="node-card node-dossier">
       <div className="node-card-shell">
-        <div className="node-head">
+        <header className="dossier-head">
           <span className="node-index mono">单元 {String(node.seq).padStart(2, "0")} / 09</span>
           <h2>{node.title}</h2>
-          <div className="node-meta">
+          <div className="node-meta dossier-meta">
             <span className="chip chip-date">{node.displayDateLabel}</span>
-            <span className="chip chip-precision">
-              {node.precision === "confirmed" ? "史料明确" : node.precision === "approximate" ? "约略" : "多候选 · 争议"}
-            </span>
+            <button
+              type="button"
+              className={`chip chip-precision chip-toggle ${p.precisionEmphasis === node.precision ? "active" : ""}`}
+              aria-pressed={p.precisionEmphasis === node.precision}
+              onClick={() => p.onPrecisionToggle(node.precision)}
+              title="点选后地图将强调对应精度的路线画法，并展开说明"
+            >
+              {PRECISION_CHIP_LABEL[node.precision]}
+            </button>
             {node.secondary.length > 0 && (
               <span className="chip chip-place">
                 {[...node.secondary.map((s) => s.name)].join(" · ")}
               </span>
             )}
           </div>
-
           <div className="depth-switch" role="tablist" aria-label="阅读层级">
             <button className={p.depth === "concise" ? "active" : ""} onClick={() => p.onDepth("concise")}>
               简明
@@ -89,28 +154,45 @@ function NodeCard({ node, p }: { node: NodeUnit; p: Props }) {
               深入
             </button>
           </div>
+        </header>
+
+        <div className="narrative-beat-rail" aria-live="polite">
+          <span className="beat-label">读到 · {BEAT_LABEL[activeBeat]}</span>
+          <span className="beat-track" aria-hidden="true">
+            <span className="beat-cursor" style={{ left: beatLeft }} />
+          </span>
         </div>
 
-        <div className="node-learning-grid">
-          <div className="node-main-column">
-            <LearningEmphasisToolbar
-              activeEmphasis={p.learningEmphasis}
-              className="narrative-emphasis-toolbar"
-              onEmphasisChange={p.onLearningEmphasisChange}
-            />
+        <blockquote className="core-question dossier-question" data-beat="question">
+          <span className="cq-mark">问</span>
+          {node.coreQuestion}
+        </blockquote>
 
-            <section className="concise-block">
+        <details className="route-position">
+          <summary>沿线位置与其它站点</summary>
+          <PlaceRouteStrip
+            selectedNodeId={node.id}
+            onSelectNode={p.onSelectNode}
+            precisionEmphasis={p.precisionEmphasis}
+            onPrecisionToggle={p.onPrecisionToggle}
+          />
+        </details>
+
+        <LearningEmphasisToolbar
+          activeEmphasis={p.learningEmphasis}
+          className="narrative-emphasis-toolbar dossier-tools"
+          onEmphasisChange={handleManualEmphasis}
+        />
+
+        <div className="node-learning-grid dossier-body" ref={bodyRef}>
+          <div className="node-main-column">
+            <section className="concise-block" data-beat="intro">
               <h3>这一站</h3>
               <p>{node.concise}</p>
             </section>
 
-            <blockquote className="core-question">
-              <span className="cq-mark">问</span>
-              {node.coreQuestion}
-            </blockquote>
-
             {node.quote && (
-              <figure className="node-quote">
+              <figure className="node-quote" data-beat="quote">
                 <span className="quote-mark" aria-hidden="true">
                   ❝
                 </span>
@@ -125,7 +207,7 @@ function NodeCard({ node, p }: { node: NodeUnit; p: Props }) {
             )}
 
             {node.sensory && (
-              <figure className="node-sensory">
+              <figure className="node-sensory" data-beat="sensory">
                 <span className="sensory-mark">你身在其中</span>
                 <p>{node.sensory.text}</p>
                 <figcaption>{node.sensory.attribution}</figcaption>
@@ -133,7 +215,7 @@ function NodeCard({ node, p }: { node: NodeUnit; p: Props }) {
             )}
 
             {p.depth === "deep" && (
-              <section className="deep-blocks">
+              <section className="deep-blocks" data-beat="deep">
                 {node.deep.map((b, i) => (
                   <p key={i} className="deep-item">
                     <TagChip tag={b.tag} />
@@ -178,21 +260,25 @@ function NodeCard({ node, p }: { node: NodeUnit; p: Props }) {
               </ol>
             </details>
 
-            <div className="watch-note">
+            <div className="watch-note" data-beat="close">
               <span className="watch-mark">回看</span>
               {node.watch}
             </div>
           </div>
 
-          <NodeEvidenceRail
-            node={node}
-            activeEmphasis={p.learningEmphasis}
-            onEmphasisChange={p.onLearningEmphasisChange}
-            onSelectStory={p.onSelectStory}
-          />
+          <aside className="dossier-margin" aria-label="边注与证据">
+            <NodeEvidenceRail
+              node={node}
+              activeEmphasis={p.learningEmphasis}
+              onEmphasisChange={p.onLearningEmphasisChange}
+              onSelectStory={p.onSelectStory}
+              precisionEmphasis={p.precisionEmphasis}
+              onPrecisionToggle={p.onPrecisionToggle}
+            />
+          </aside>
         </div>
 
-        <div className="node-footer">
+        <div className="node-footer dossier-foot">
           <button className="ghost-btn" onClick={() => p.onOpenSources(node.id)}>
             史料与出处 · {nodeSources.length} 条
           </button>
@@ -225,9 +311,16 @@ function StoryCard({ story, p }: { story: StoryPoint; p: Props }) {
         <div className="node-meta">
           <span className="chip chip-date">{story.dateLabel}</span>
           <span className="chip chip-place">{story.place}</span>
-          <span className="chip chip-precision">
+          <button
+            type="button"
+            className={`chip chip-precision chip-toggle ${p.precisionEmphasis === story.precision ? "active" : ""}`}
+            aria-pressed={p.precisionEmphasis === story.precision}
+            onClick={() => p.onPrecisionToggle(story.precision)}
+            title="点选后地图将强调对应精度的路线画法，并展开说明"
+          >
             {story.precision === "confirmed" ? "点位可确认" : "约略位置"}
-          </span>
+            <span className="chip-hint">地图解释</span>
+          </button>
         </div>
       </header>
 

@@ -17,6 +17,10 @@ type Props = {
   onOpenCatalog: () => void;
   compareOn: boolean;
   onCompareToggle: () => void;
+  disputeDockOn: boolean;
+  onDisputeDockToggle: () => void;
+  onShareCard: () => void;
+  shareBusy?: boolean;
 };
 
 type TerrainButtonModel = {
@@ -161,6 +165,22 @@ export default function TopBar(p: Props) {
           title="3D 沿线巡航：镜头贴着路线低空飞行，按 Esc 退出"
         >
           {p.cruising ? "退出巡航" : "巡航"}
+        </button>
+        <button
+          className={`tool-btn ${p.disputeDockOn ? "on" : ""}`}
+          onClick={p.onDisputeDockToggle}
+          title="播放进入争议路段时自动暂停并打开说明（默认关闭）"
+          aria-pressed={p.disputeDockOn}
+        >
+          争议停靠
+        </button>
+        <button
+          className={`tool-btn ${p.shareBusy ? "busy" : ""}`}
+          onClick={p.onShareCard}
+          disabled={p.shareBusy}
+          title="把当前地图取景截成可分享的 PNG 卡片（标题 / 日期 / 精度 + 项目脚注）"
+        >
+          {p.shareBusy ? "生成中…" : "截取卡片"}
         </button>
         <button className="tool-btn" onClick={p.onFocusToggle} title="收起全部面板">
           {p.focusMode ? "退出专注" : "专注地图"}

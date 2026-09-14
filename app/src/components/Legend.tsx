@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { stories } from "../data/stories";
+import { PRECISION_ORDER, PRECISION_TITLE, type PrecisionKind } from "../map/precisionExplain";
 
 type Props = {
   showEpilogue: boolean;
@@ -7,6 +8,28 @@ type Props = {
   showStories: boolean;
   onStories: (v: boolean) => void;
   onResetView: () => void;
+  precisionEmphasis: PrecisionKind | null;
+  onPrecisionToggle: (kind: PrecisionKind) => void;
+};
+
+const LEGEND_SVG: Record<PrecisionKind, ReactNode> = {
+  confirmed: (
+    <svg width="34" height="10" aria-hidden="true">
+      <line x1="1" y1="5" x2="33" y2="5" stroke="#A6322B" strokeWidth="3" />
+    </svg>
+  ),
+  approximate: (
+    <svg width="34" height="10" aria-hidden="true">
+      <rect x="1" y="1" width="32" height="8" rx="4" fill="#D8A39D" opacity="0.45" />
+      <line x1="4" y1="5" x2="30" y2="5" stroke="#A6322B" strokeWidth="1.2" />
+    </svg>
+  ),
+  disputed: (
+    <svg width="34" height="10" aria-hidden="true">
+      <line x1="1" y1="3" x2="33" y2="3" stroke="#765B78" strokeWidth="1.8" strokeDasharray="2.5 2.5" />
+      <line x1="1" y1="7" x2="33" y2="7" stroke="#765B78" strokeWidth="1.4" strokeDasharray="2.5 2.5" />
+    </svg>
+  ),
 };
 
 export default function Legend(p: Props) {
@@ -18,26 +41,22 @@ export default function Legend(p: Props) {
       </button>
       {open && (
         <div className="legend-body">
-          <div className="legend-row">
-            <svg width="34" height="10" aria-hidden="true">
-              <line x1="1" y1="5" x2="33" y2="5" stroke="#A6322B" strokeWidth="3" />
-            </svg>
-            <span>确定路线 · 史料明确</span>
-          </div>
-          <div className="legend-row">
-            <svg width="34" height="10" aria-hidden="true">
-              <rect x="1" y="1" width="32" height="8" rx="4" fill="#D8A39D" opacity="0.45" />
-              <line x1="4" y1="5" x2="30" y2="5" stroke="#A6322B" strokeWidth="1.2" />
-            </svg>
-            <span>约略走廊 · 范围示意</span>
-          </div>
-          <div className="legend-row">
-            <svg width="34" height="10" aria-hidden="true">
-              <line x1="1" y1="3" x2="33" y2="3" stroke="#765B78" strokeWidth="1.8" strokeDasharray="2.5 2.5" />
-              <line x1="1" y1="7" x2="33" y2="7" stroke="#765B78" strokeWidth="1.4" strokeDasharray="2.5 2.5" />
-            </svg>
-            <span>争议候选 · 并列呈现</span>
-          </div>
+          {PRECISION_ORDER.map((kind) => (
+            <button
+              key={kind}
+              type="button"
+              className={`legend-row legend-precision ${p.precisionEmphasis === kind ? "active" : ""}`}
+              aria-pressed={p.precisionEmphasis === kind}
+              onClick={() => p.onPrecisionToggle(kind)}
+              title="点选后地图强调该精度画法，并展开说明"
+            >
+              {LEGEND_SVG[kind]}
+              <span>
+                {PRECISION_TITLE[kind]}
+                {kind === "confirmed" ? "路线 · 史料明确" : kind === "approximate" ? "走廊 · 范围示意" : "候选 · 并列呈现"}
+              </span>
+            </button>
+          ))}
           <label className="legend-check">
             <input type="checkbox" checked={p.showStories} onChange={(e) => p.onStories(e.target.checked)} />
             <span>显示 {stories.length} 个沿途故事与人物事件</span>

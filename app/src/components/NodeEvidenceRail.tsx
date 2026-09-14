@@ -1,6 +1,7 @@
 import type { FocusEvent } from "react";
 import type { NodeUnit } from "../data/nodes";
 import { getStoryMarkerPresentation } from "../map/markerPresentation";
+import type { PrecisionKind } from "../map/precisionExplain";
 import {
   buildNodeEvidenceRailModel,
   LEARNING_EMPHASIS_OPTIONS,
@@ -17,6 +18,8 @@ type ToolbarProps = {
 type Props = ToolbarProps & {
   node: NodeUnit;
   onSelectStory: (storyId: string) => void;
+  precisionEmphasis?: PrecisionKind | null;
+  onPrecisionToggle?: (kind: PrecisionKind) => void;
 };
 
 function handleEmphasisBlur(
@@ -66,6 +69,8 @@ export default function NodeEvidenceRail({
   activeEmphasis,
   onEmphasisChange,
   onSelectStory,
+  precisionEmphasis = null,
+  onPrecisionToggle,
 }: Props) {
   const model = buildNodeEvidenceRailModel(node);
 
@@ -86,7 +91,15 @@ export default function NodeEvidenceRail({
             <article className={`route-segment-card cert-${segment.certainty}`} key={segment.id}>
               <span className="route-segment-date mono">{segment.displayDateLabel}</span>
               <div className="route-segment-meta">
-                <span className={`cert-chip cert-${segment.certainty}`}>{segment.certaintyLabel}</span>
+                <button
+                  type="button"
+                  className={`cert-chip cert-${segment.certainty} chip-toggle ${precisionEmphasis === segment.certainty ? "active" : ""}`}
+                  aria-pressed={precisionEmphasis === segment.certainty}
+                  onClick={() => onPrecisionToggle?.(segment.certainty)}
+                  title="点选后地图强调该精度画法，并展开说明"
+                >
+                  {segment.certaintyLabel}
+                </button>
                 <details className="route-segment-sources">
                   <summary className="fine mono">{segment.sourceCount} 条依据</summary>
                   <ul className="route-source-list">

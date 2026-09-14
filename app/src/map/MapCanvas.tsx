@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type Ref } from "react";
 import maplibregl, { type Map as MlMap, type LngLatBoundsLike } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { buildStyle, MAP_LAYER_IDS, probeHillshade, type HillshadeBbox } from "./style";
@@ -34,6 +34,13 @@ import {
   restoreHoveredRouteLineWidth,
 } from "./nodeScenePresentation";
 import { applyLearningEmphasisSupportPaint } from "./learningEmphasisPaint";
+import {
+  applyPrecisionEmphasisPaint,
+  precisionWidthScale,
+  resetPrecisionEmphasisPaint,
+  type PrecisionPaintMapLike,
+} from "./precisionEmphasisPaint";
+import type { PrecisionKind } from "./precisionExplain";
 import { applyNodeTerrain, clearNodeTerrain, type NodeTerrainMapLike } from "./nodeTerrainRuntime";
 import routeGeometry from "../data/route-geometry.json";
 import { nodes, epilogue } from "../data/nodes";
@@ -76,6 +83,9 @@ type Props = {
   showEpilogue: boolean;
   learningFocus: boolean;
   learningEmphasis: LearningEmphasis;
+  precisionEmphasis: PrecisionKind | null;
+  precisionFocusCandidateId?: string | null;
+  storyPrecisionActive?: boolean;
   padding: CameraPadding;
   cameraReq: CameraReq | null;
   onSelectNode: (id: string) => void;
@@ -88,6 +98,8 @@ type Props = {
   atmosphere?: string | null;
   onTerrainStatusChange: (status: "local" | "loading" | "ready" | "offline") => void;
   onTerrainActivationApplied: (requestId: number) => void;
+  /** 暴露当前地图 canvas，供分享卡片导出 */
+  captureRef?: Ref<{ captureCanvas: () => HTMLCanvasElement | null }>;
 };
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -211,6 +223,30 @@ export default function MapCanvas(props: Props) {
   const terrainPrefetchStartedRef = useRef(false);
   propsRef.current = props;
 
+  useEffect(() => {
+    const handle = props.captureRef;
+    if (!handle) return;
+    const value = {
+      captureCanvas: () => {
+        const map = mapRef.current;
+        if (!map) return null;
+        try {
+          return map.getCanvas();
+        } catch {
+          return null;
+        }
+      },
+    };
+    if (typeof handle === "function") {
+      handle(value);
+      return () => handle(null);
+    }
+    (handle as { current: typeof value | null }).current = value;
+    return () => {
+      (handle as { current: typeof value | null }).current = null;
+    };
+  }, [props.captureRef]);
+
   const clearSceneAnnotations = () => {
     for (const marker of sceneAnnotationRefs.current) marker.remove();
     sceneAnnotationRefs.current = [];
@@ -271,7 +307,9 @@ export default function MapCanvas(props: Props) {
         maxPitch: 70,
         attributionControl: false,
         dragRotate: true,
-      });
+        // 分享卡片需要读取当前帧像素；部分类型定义未列出该标准 WebGL 选项
+        preserveDrawingBuffer: true,
+      } as ConstructorParameters<typeof maplibregl.Map>[0]);
       mapRef.current = map;
       // 氛围层：昼夜/天气色调，位于两张地图之上、UI 之下
       const veil = document.createElement("div");
@@ -624,6 +662,16 @@ export default function MapCanvas(props: Props) {
       }
     }
 
+    // 显影写完后叠一层精度强调，避免被 reveal 覆盖
+    if (props.precisionEmphasis) {
+      for (const target of targets) {
+        applyPrecisionEmphasisPaint(target as unknown as PrecisionPaintMapLike, props.precisionEmphasis, {
+          focusCandidateLineId: props.precisionFocusCandidateId,
+          widthScale: precisionWidthScale(),
+        });
+      }
+    }
+
     // 节点标记显影（主图 + 对照图同步）
     for (const node of nodes) {
       const rec = markerRefs.current.get(node.id);
@@ -637,7 +685,41 @@ export default function MapCanvas(props: Props) {
       const visible = props.layers.nodes && t >= NODE_FRACTIONS[nodes[i].id] - 1e-6;
       el.classList.toggle("visible", visible);
     }
-  }, [props.progress, props.layers.nodes, ready]);
+  }, [props.progress, props.layers.nodes, props.precisionEmphasis, props.precisionFocusCandidateId, ready]);
+
+  // 精度强调独立生效：切换标签时立刻重画，不依赖进度变化
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const targets: MlMap[] = compareMapRef.current ? [map, compareMapRef.current] : [map];
+    if (props.precisionEmphasis) {
+      for (const target of targets) {
+        applyPrecisionEmphasisPaint(target as unknown as PrecisionPaintMapLike, props.precisionEmphasis, {
+          focusCandidateLineId: props.precisionFocusCandidateId,
+          widthScale: precisionWidthScale(),
+        });
+      }
+      return;
+    }
+    lastFracRef.current = {};
+    for (const target of targets) {
+      paintRouteReveal(target, props.progress);
+      resetPrecisionEmphasisPaint(target as unknown as PrecisionPaintMapLike);
+    }
+  }, [props.precisionEmphasis, props.precisionFocusCandidateId, ready]);
+
+  // 故事点位精度圈注 + 场景标注随精度强调同步
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    container.classList.toggle("story-precision-active", Boolean(props.storyPrecisionActive));
+    for (const marker of sceneAnnotationRefs.current) {
+      const el = marker.getElement();
+      const kind = props.precisionEmphasis;
+      el.classList.toggle("precision-active", Boolean(kind));
+      el.classList.toggle("precision-match", Boolean(kind) && el.classList.contains(kind as string));
+    }
+  }, [props.precisionEmphasis, props.storyPrecisionActive, ready]);
 
   // 选中态
   useEffect(() => {
@@ -663,6 +745,9 @@ export default function MapCanvas(props: Props) {
     }
     for (const marker of geoRefs.current) {
       marker.classList.toggle("learning-hidden", shouldHideMarkerForLearning(props.learningFocus, "geo", false));
+      if (marker.classList.contains("city")) {
+        marker.classList.toggle("learning-muted", props.learningFocus);
+      }
     }
     for (const marker of contourLabelRefs.current) {
       marker.classList.toggle("learning-hidden", shouldHideMarkerForLearning(props.learningFocus, "contour", false));
@@ -1006,7 +1091,8 @@ export default function MapCanvas(props: Props) {
       pitch: mapA.getPitch(),
       bearing: mapA.getBearing(),
       attributionControl: false,
-    });
+      preserveDrawingBuffer: true,
+    } as ConstructorParameters<typeof maplibregl.Map>[0]);
     compareMapRef.current = mapB;
 
     const sync = (from: MlMap, to: MlMap) => {

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import MapCanvas, { ROUTE_BOUNDS, lineBounds, type CameraReq } from "./map/MapCanvas";
 import TopBar, { type Mode } from "./components/TopBar";
 import NodeSceneCartouche from "./components/NodeSceneCartouche";
-import LeftTimeline from "./components/LeftTimeline";
 import RightPanel, { type RightView } from "./components/RightPanel";
 import BottomPanel from "./components/BottomPanel";
 import Legend from "./components/Legend";
@@ -11,9 +10,13 @@ import StoryCatalog from "./components/StoryCatalog";
 import LayerPanel, { type MapLayerVisibility } from "./components/LayerPanel";
 import MapTitleReveal from "./components/MapTitleReveal";
 import CompareGuide from "./components/CompareGuide";
+import PrecisionExplainCard from "./components/PrecisionExplainCard";
+import ScenePhotoModal from "./components/ScenePhotoModal";
 import { altitudeForSegment, type LearningEmphasis } from "./components/nodeLearning";
+import { parsePrecisionKind, PRECISION_CHIP_LABEL, type PrecisionKind } from "./map/precisionExplain";
 import { TOUR_STOPS } from "./tour";
 import { nodes, type NodeUnit } from "./data/nodes";
+import { segments } from "./data/sources";
 import { sceneForNode } from "./data/nodeScenes";
 import { stories, type StoryPoint } from "./data/stories";
 import { NODE_FRACTIONS, SEG_FRACTIONS, activeSegmentAt, marchDayAt, marchDistanceLi } from "./data/time";
@@ -32,6 +35,8 @@ import {
 } from "./map/terrainRuntime";
 import { getRightPanelPresentation } from "./layout/rightPanelPresentation";
 import { scenePlaceLabel } from "./map/nodeScenePresentation";
+import { composeShareCard, downloadCanvasPng, shareCardFileName } from "./map/shareCard";
+import { expandBounds } from "./map/narrativeSync";
 
 const CAMERA_MOTION_MS = 1400;
 const TOUR_CAMERA_MOTION_MS = 1500;
@@ -51,7 +56,7 @@ function unionBounds(lineIds: string[], margin = 0.4): [number, number, number, 
   return [w, s, e, n];
 }
 
-// ---- URL 深链接：#n=节点 & s=故事 & t=时间线 & r=显影 & m=模式 & i=导览站 ----
+// ---- URL 深链接：#n=节点 & s=故事 & t=时间线 & r=显影 & m=模式 & i=导览站 & p=精度 ----
 type HashParams = {
   mode?: Mode;
   tourIndex?: number;
@@ -59,6 +64,8 @@ type HashParams = {
   storyId?: string;
   timelineT?: number;
   revealT?: number;
+  precision?: PrecisionKind;
+  candidate?: string;
 };
 
 function parseHash(hash: string): HashParams {
@@ -81,6 +88,10 @@ function parseHash(hash: string): HashParams {
     } else if (key === "i") {
       const i = parseInt(value, 10);
       if (Number.isFinite(i) && i >= 0) out.tourIndex = i;
+    } else if (key === "p") {
+      out.precision = parsePrecisionKind(value) ?? undefined;
+    } else if (key === "c") {
+      out.candidate = value;
     }
   }
   return out;
@@ -98,6 +109,8 @@ function serializeHash(params: HashParams): string {
   if (typeof params.revealT === "number" && params.revealT > 0 && params.revealT < 1) {
     parts.push(`r=${params.revealT.toFixed(3)}`);
   }
+  if (params.precision) parts.push(`p=${params.precision}`);
+  if (params.precision === "disputed" && params.candidate) parts.push(`c=${params.candidate}`);
   return parts.length ? `#${parts.join("&")}` : "";
 }
 
@@ -164,14 +177,21 @@ export default function App() {
   const [focusMode, setFocusMode] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
-  const [leftCollapsed, setLeftCollapsed] = useState(false);
-  const [mobileTimelineOpen, setMobileTimelineOpen] = useState(false);
   const [bottomExpanded, setBottomExpanded] = useState(false);
   const [cameraReq, setCameraReq] = useState<CameraReq | null>(null);
   const [learningEmphasis, setLearningEmphasis] = useState<LearningEmphasis>(null);
+  const [precisionEmphasis, setPrecisionEmphasis] = useState<PrecisionKind | null>(initialHash.precision ?? null);
+  const [precisionFocusCandidateId, setPrecisionFocusCandidateId] = useState<string | null>(
+    initialHash.precision === "disputed" ? (initialHash.candidate ?? null) : null
+  );
+  const [disputeDockOn, setDisputeDockOn] = useState(false);
+  const disputeDockedRef = useRef(false);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [sceneOpen, setSceneOpen] = useState(false);
+  const mapCaptureRef = useRef<{ captureCanvas: () => HTMLCanvasElement | null } | null>(null);
   const [voiceOn, setVoiceOn] = useState(false);
   const [ambientOn, setAmbientOn] = useState(false);
-  const suppressInitialSelectedScrollRef = useRef(true);
   const seqRef = useRef(0);
   const timelineRef = useRef(timelineT);
   timelineRef.current = timelineT;
@@ -187,6 +207,8 @@ export default function App() {
   playingRef.current = playing;
   const cruiseRef = useRef(cruising);
   cruiseRef.current = cruising;
+  const disputeDockOnRef = useRef(disputeDockOn);
+  disputeDockOnRef.current = disputeDockOn;
   const activeSegRef = useRef<string | null>(null);
 
   const fly = useCallback((req: Omit<CameraReq, "seq">) => {
@@ -199,21 +221,21 @@ export default function App() {
       if (scene) {
         const isNarrow = window.innerWidth < 900;
         fly({
-          bounds: scene.focusBounds,
+          bounds: expandBounds(scene.focusBounds, 0.38),
           duration: CAMERA_MOTION_MS,
           padding: isNarrow
             ? { top: 84, right: 24, bottom: 160, left: 24 }
-            : { top: 90, right: 108, bottom: 48, left: 34 },
+            : { top: 88, right: 560, bottom: 56, left: 40 },
         });
         return;
       }
 
       const pts: Array<[number, number]> = [node.anchor, ...node.secondary.map((s) => [s.lon, s.lat] as [number, number])];
-      const w = Math.min(...pts.map((q) => q[0])) - 0.5;
-      const e2 = Math.max(...pts.map((q) => q[0])) + 0.5;
-      const s = Math.min(...pts.map((q) => q[1])) - 0.5;
-      const n2 = Math.max(...pts.map((q) => q[1])) + 0.5;
-      fly({ bounds: [w, s, e2, n2], duration: CAMERA_MOTION_MS });
+      const w = Math.min(...pts.map((q) => q[0])) - 0.8;
+      const e2 = Math.max(...pts.map((q) => q[0])) + 0.8;
+      const s = Math.min(...pts.map((q) => q[1])) - 0.6;
+      const n2 = Math.max(...pts.map((q) => q[1])) + 0.6;
+      fly({ bounds: [w, s, e2, n2], duration: CAMERA_MOTION_MS, padding: { right: 560, left: 40, top: 88, bottom: 56 } });
     },
     [fly]
   );
@@ -272,16 +294,18 @@ export default function App() {
   // 面板安全区（docs/16 §6）
   const padding = useMemo(() => {
     if (focusMode) return { top: 72, right: 28, bottom: 28, left: 28 };
-    if (rightPanelPresentation.learningFocus) return { top: 28, right: 28, bottom: 28, left: 28 };
+    if (rightPanelPresentation.learningFocus) {
+      return { top: 28, right: rightPanelPresentation.mapPaddingRight, bottom: 28, left: 28 };
+    }
     const isNarrow = window.innerWidth < 900;
     if (isNarrow) return { top: 64, right: 12, bottom: bottomExpanded ? 300 : 150, left: 12 };
     return {
       top: 76,
       right: rightPanelPresentation.mapPaddingRight,
-      bottom: bottomExpanded ? 310 : 100,
-      left: leftCollapsed ? 92 : 316,
+      bottom: bottomExpanded || precisionEmphasis ? 280 : 92,
+      left: 28,
     };
-  }, [focusMode, rightPanelPresentation.learningFocus, rightPanelPresentation.mapPaddingRight, bottomExpanded, leftCollapsed]);
+  }, [focusMode, rightPanelPresentation.learningFocus, rightPanelPresentation.mapPaddingRight, bottomExpanded, precisionEmphasis]);
 
   // 播放循环：路线沿时间顺序显影；巡航时相机由 MapCanvas 低空接管
   useEffect(() => {
@@ -304,6 +328,18 @@ export default function App() {
       const seg = activeSegmentAt(next);
       if (seg !== activeSegRef.current) {
         activeSegRef.current = seg;
+        const segMeta = segments.find((item) => item.id === seg);
+        if (disputeDockOnRef.current && segMeta?.certainty === "disputed" && !disputeDockedRef.current) {
+          disputeDockedRef.current = true;
+          if (!cruiseRef.current) {
+            const primary = SEG_PRIMARY_LINE[seg];
+            fly({ bounds: lineBounds(primary), duration: CAMERA_MOTION_MS });
+          }
+          setPlaying(false);
+          setPrecisionFocusCandidateId(null);
+          setPrecisionEmphasis("disputed");
+          return;
+        }
         if (!cruiseRef.current) {
           const primary = SEG_PRIMARY_LINE[seg];
           fly({ bounds: lineBounds(primary), duration: CAMERA_MOTION_MS });
@@ -345,7 +381,7 @@ export default function App() {
       setPlaying(false);
       setFocusMode(false);
       setLearningEmphasis(null);
-      setMobileTimelineOpen(false);
+      setPrecisionEmphasis(null);
       setSelectedStoryId(null);
       if (m !== "tour") setRevealT(1);
       if (m === "tour") {
@@ -366,11 +402,12 @@ export default function App() {
 
   // 节点选择（地图标记 / 左侧列表 / 面板翻页）
   const selectNode = useCallback(
-    (id: string) => {
+    (id: string, options?: { openScene?: boolean }) => {
       const node = nodes.find((x) => x.id === id)!;
       setMode("explore");
       setPlaying(false);
       setLearningEmphasis(null);
+      setPrecisionEmphasis(null);
       setSelectedNodeId(id);
       setSelectedStoryId(null);
       setShowEpilogue(false);
@@ -378,6 +415,8 @@ export default function App() {
       setRevealT(1);
       setTimelineT(NODE_FRACTIONS[id]);
       flyToNode(node);
+      // 地图点选打开当时/当今场景；键盘与 prev/next 可只进卷宗
+      setSceneOpen(options?.openScene !== false);
     },
     [flyToNode]
   );
@@ -389,6 +428,7 @@ export default function App() {
       setMode("explore");
       setPlaying(false);
       setLearningEmphasis(null);
+      setPrecisionEmphasis(null);
       setSelectedStoryId(id);
       setSelectedNodeId(story.nodeId);
       setRevealT(1);
@@ -413,7 +453,7 @@ export default function App() {
       } else if (selectedNodeId) {
         const cur = nodes.find((x) => x.id === selectedNodeId)!;
         const target = nodes.find((x) => x.seq === cur.seq + dir);
-        if (target) selectNode(target.id);
+        if (target) selectNode(target.id, { openScene: false });
       }
     },
     [mode, tourIndex, selectedNodeId, applyTourStop, enterMode, selectNode]
@@ -430,12 +470,14 @@ export default function App() {
         else if (focusMode) {
           setFocusMode(false);
           setLearningEmphasis(null);
+        } else if (precisionEmphasis) {
+          setPrecisionEmphasis(null);
         } else if (rightView) {
           setRightView(null);
           setLearningEmphasis(null);
+        } else if (bottomExpanded) {
+          setBottomExpanded(false);
         }
-        else if (bottomExpanded) setBottomExpanded(false);
-        else if (mobileTimelineOpen) setMobileTimelineOpen(false);
       } else if (e.key === "?" ) {
         setInfoOpen(true);
       } else if (e.key === " " && (e.target as HTMLElement | null)?.tagName === "BODY") {
@@ -449,7 +491,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [infoOpen, catalogOpen, cruising, focusMode, rightView, bottomExpanded, mobileTimelineOpen, mode, prevNext, exitCruise, togglePlay]);
+  }, [infoOpen, catalogOpen, cruising, focusMode, rightView, bottomExpanded, mode, prevNext, exitCruise, togglePlay, precisionEmphasis]);
 
   // 深链接：首次进入按 hash 内容定位相机（相机请求会在地图就绪后生效）
   useEffect(() => {
@@ -464,10 +506,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    suppressInitialSelectedScrollRef.current = false;
-  }, []);
-
   // 状态 → hash（防抖，避免播放时高频改写地址）
   const lastHashRef = useRef("");
   useEffect(() => {
@@ -479,6 +517,8 @@ export default function App() {
         storyId: selectedStoryId ?? undefined,
         timelineT,
         revealT: mode === "explore" ? undefined : revealT,
+        precision: precisionEmphasis ?? undefined,
+        candidate: precisionFocusCandidateId ?? undefined,
       });
       if (hash !== window.location.hash) {
         lastHashRef.current = hash;
@@ -486,7 +526,7 @@ export default function App() {
       }
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [mode, tourIndex, selectedNodeId, selectedStoryId, timelineT, revealT]);
+  }, [mode, tourIndex, selectedNodeId, selectedStoryId, timelineT, revealT, precisionEmphasis, precisionFocusCandidateId]);
 
   // 外部 hash 变化（浏览器前进/后退、手动编辑）→ 应用状态
   useEffect(() => {
@@ -501,6 +541,10 @@ export default function App() {
         setRightView(params.mode === "sources" ? { type: "sources" } : null);
       }
       if (params.mode) setMode(params.mode);
+      if (params.precision !== undefined || window.location.hash.includes("p=")) {
+        setPrecisionEmphasis(params.precision ?? null);
+        setPrecisionFocusCandidateId(params.precision === "disputed" ? (params.candidate ?? null) : null);
+      }
       const resolved = resolveTimelineAndRevealFromHash(params);
       setTimelineT(resolved.timelineT);
       setRevealT(resolved.revealT);
@@ -566,6 +610,53 @@ export default function App() {
     [mode]
   );
 
+  const togglePrecision = useCallback((kind: PrecisionKind) => {
+    const next = precisionEmphasis === kind ? null : kind;
+    setPrecisionEmphasis(next);
+    if (next !== "disputed") setPrecisionFocusCandidateId(null);
+  }, [precisionEmphasis]);
+
+  const exportShareCard = useCallback(() => {
+    const canvas = mapCaptureRef.current?.captureCanvas() ?? null;
+    if (!canvas) {
+      setShareError("地图尚未就绪，无法截取卡片");
+      return;
+    }
+    setShareBusy(true);
+    setShareError(null);
+    // 等一帧，尽量拿到最新绘制缓冲
+    requestAnimationFrame(() => {
+      try {
+        const source = mapCaptureRef.current?.captureCanvas() ?? canvas;
+        const title = selectedStory?.title ?? selectedNode?.title ?? "中央红军长征路线";
+        const dateLabel =
+          selectedStory?.dateLabel ??
+          selectedNode?.displayDateLabel ??
+          "1934年10月 — 1935年10月";
+        let precisionLabel = PRECISION_CHIP_LABEL.approximate;
+        if (selectedStory) {
+          precisionLabel = selectedStory.precision === "confirmed" ? "点位可确认" : "约略位置";
+        } else if (selectedNode) {
+          precisionLabel = PRECISION_CHIP_LABEL[selectedNode.precision];
+        } else {
+          const seg = segments.find((s) => s.id === activeSegmentAt(timelineT));
+          if (seg) precisionLabel = PRECISION_CHIP_LABEL[seg.certainty];
+        }
+        const card = composeShareCard(source, {
+          title,
+          dateLabel,
+          precisionLabel,
+          footer: "长征·一条路的来处 · 示意还原，非逐日 GPS",
+        });
+        downloadCanvasPng(card, shareCardFileName(title));
+      } catch {
+        setShareError("生成卡片失败，请稍后重试");
+      } finally {
+        setShareBusy(false);
+      }
+    });
+  }, [selectedNode, selectedStory, timelineT]);
+
   const toggleTerrain3d = useCallback(() => {
     userTouched3dRef.current = true;
     setTerrainUi((current) => {
@@ -626,7 +717,7 @@ export default function App() {
     <div
       className={`app ${focusMode ? "focus" : ""} ${
         rightPanelPresentation.learningFocus ? "learning-focus" : ""
-      } ${leftCollapsed && mode !== "sources" ? "left-rail" : ""}`}
+      }`}
       style={
         {
           "--learning-map-width": rightPanelPresentation.mapWidth,
@@ -646,9 +737,12 @@ export default function App() {
         showEpilogue={showEpilogue}
         learningFocus={rightPanelPresentation.learningFocus}
         learningEmphasis={learningEmphasis}
+        precisionEmphasis={precisionEmphasis}
+        precisionFocusCandidateId={precisionFocusCandidateId}
+        storyPrecisionActive={Boolean(selectedStoryId && precisionEmphasis)}
         padding={padding}
         cameraReq={cameraReq}
-        onSelectNode={selectNode}
+        onSelectNode={(id) => selectNode(id, { openScene: true })}
         onSelectStory={selectStory}
         onUserGesture={() => {
           setPlaying(false);
@@ -659,7 +753,17 @@ export default function App() {
         atmosphere={atmosphere}
         onTerrainStatusChange={(status: TerrainStatus) => setTerrainUi((current) => syncTerrainStatus(current, status))}
         onTerrainActivationApplied={(requestId) => setTerrainUi((current) => applyTerrainActivation(current, requestId))}
+        captureRef={mapCaptureRef}
       />
+
+      {shareError && (
+        <div className="share-card-error" role="status">
+          {shareError}
+          <button type="button" className="mini-btn" onClick={() => setShareError(null)}>
+            关闭
+          </button>
+        </div>
+      )}
 
       {compareOn && <CompareGuide />}
 
@@ -741,6 +845,13 @@ export default function App() {
           terrainPendingActivation={terrainUi.pendingActivationRequestId !== null}
           compareOn={compareOn}
           onCompareToggle={() => setCompareOn((v) => !v)}
+          disputeDockOn={disputeDockOn}
+          onDisputeDockToggle={() => {
+            setDisputeDockOn((v) => !v);
+            disputeDockedRef.current = false;
+          }}
+          onShareCard={exportShareCard}
+          shareBusy={shareBusy}
           onTerrain3d={toggleTerrain3d}
           cruising={cruising}
           onCruiseToggle={toggleCruise}
@@ -763,31 +874,37 @@ export default function App() {
         </button>
       )}
 
-      {!focusMode && mode !== "sources" && (
-        <>
-          <LeftTimeline
-            timelineT={timelineT}
-            selectedNodeId={selectedNodeId}
-            collapsed={leftCollapsed || mode === "tour"}
-            mobileOpen={mobileTimelineOpen}
-            suppressInitialSelectedScroll={suppressInitialSelectedScrollRef.current}
-            onToggleCollapse={() => setLeftCollapsed((v) => !v)}
-            onTimelineChange={onTimelineChange}
-            onSelect={(id) => {
-              selectNode(id);
-              setMobileTimelineOpen(false);
-            }}
-          />
-          {mode !== "tour" && !effectiveRightView && (
-            <button
-              className="mobile-sheet-toggle"
-              onClick={() => setMobileTimelineOpen((v) => !v)}
-              aria-expanded={mobileTimelineOpen}
-            >
-              {mobileTimelineOpen ? "▾ 收起时间与节点" : "▴ 时间与节点"}
-            </button>
-          )}
-        </>
+      {!focusMode && sceneOpen && selectedNode && (
+        <ScenePhotoModal
+          node={selectedNode}
+          compareOn={compareOn}
+          onClose={() => setSceneOpen(false)}
+          onOpenFullNode={() => setSceneOpen(false)}
+        />
+      )}
+
+      {!focusMode && precisionEmphasis && (
+        <PrecisionExplainCard
+          kind={precisionEmphasis}
+          node={selectedNode ?? null}
+          focusCandidateLineId={precisionFocusCandidateId}
+          onClose={() => {
+            setPrecisionEmphasis(null);
+            setPrecisionFocusCandidateId(null);
+            disputeDockedRef.current = false;
+          }}
+          onKindChange={(kind) => {
+            setPrecisionEmphasis(kind);
+            if (kind !== "disputed") setPrecisionFocusCandidateId(null);
+          }}
+          onFocusCandidate={setPrecisionFocusCandidateId}
+          onOpenSources={(nodeId) => {
+            setMode("explore");
+            setLearningEmphasis(null);
+            setSelectedStoryId(null);
+            setRightView({ type: "sources", nodeId: nodeId ?? selectedNodeId ?? undefined });
+          }}
+        />
       )}
 
       <RightPanel
@@ -800,7 +917,7 @@ export default function App() {
           if (mode === "tour") enterMode("explore");
           else setRightView(null);
         }}
-        onSelectNode={selectNode}
+        onSelectNode={(id) => selectNode(id, { openScene: false })}
         onSelectStory={selectStory}
         onOpenSources={(nodeId) => {
           setMode("explore");
@@ -811,6 +928,8 @@ export default function App() {
         onPrevNext={prevNext}
         learningEmphasis={learningEmphasis}
         onLearningEmphasisChange={setLearningEmphasis}
+        precisionEmphasis={precisionEmphasis}
+        onPrecisionToggle={togglePrecision}
         tourChrome={
           stop && stop.kind !== "intro"
             ? { index: tourIndex + 1, total: TOUR_STOPS.length, stopTitle: stop.title }
@@ -832,6 +951,8 @@ export default function App() {
           onVoiceToggle={() => setVoiceOn((v) => !v)}
           ambientOn={ambientOn}
           onAmbientToggle={() => setAmbientOn((v) => !v)}
+          precisionEmphasis={precisionEmphasis}
+          onPrecisionToggle={togglePrecision}
         />
       )}
 
@@ -872,6 +993,8 @@ export default function App() {
           showStories={mapLayers.stories}
           onStories={(value) => setMapLayers((current) => ({ ...current, stories: value }))}
           onResetView={() => fly({ bounds: ROUTE_BOUNDS, duration: CAMERA_MOTION_MS })}
+          precisionEmphasis={precisionEmphasis}
+          onPrecisionToggle={togglePrecision}
         />
       )}
 

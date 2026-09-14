@@ -76,15 +76,37 @@ export type SegmentMeta = {
   toNodeId: string;
   reasoning: string;
   sourceIds: string[];
+  /** 争议段：分歧是什么（2–3 句，教学短文） */
+  disputeNote?: string;
 };
 
 export const segments: SegmentMeta[] = [
   { id: "seg-01", certainty: "approximate", displayDateLabel: "1934年10月至12月", fromNodeId: "node-01", toNodeId: "node-02", reasoning: "当前只确认主要起点事件与湘江阶段，不画逐日单线", sourceIds: ["hist-001", "hist-002", "hist-003", "hist-004"] },
   { id: "seg-02", certainty: "approximate", displayDateLabel: "1934年12月", fromNodeId: "node-02", toNodeId: "node-03", reasoning: "路线转向必须与通道黎平猴场会议链共同解释", sourceIds: ["hist-004", "hist-005", "hist-006", "hist-020"] },
   { id: "seg-03", certainty: "approximate", displayDateLabel: "1935年1月上中旬", fromNodeId: "node-03", toNodeId: "node-04", reasoning: "只在史料可确认的城镇节点间使用代表性中心线", sourceIds: ["hist-006", "hist-007", "hist-008", "hist-020"] },
-  { id: "seg-04", certainty: "disputed", displayDateLabel: "1935年1月至3月", fromNodeId: "node-04", toNodeId: "node-05", reasoning: "四渡赤水多次往返，应按渡河事件和候选区段建模", sourceIds: ["hist-009", "hist-010"] },
+  {
+    id: "seg-04",
+    certainty: "disputed",
+    displayDateLabel: "1935年1月至3月",
+    fromNodeId: "node-04",
+    toNodeId: "node-05",
+    reasoning: "四渡赤水多次往返，应按渡河事件和候选区段建模",
+    sourceIds: ["hist-009", "hist-010"],
+    disputeNote:
+      "分歧不在「有没有渡赤水」，而在每一次往返的空间顺序与渡口组合如何画在一条线上。不同史著对行军日程的归纳不完全一致，图中因此并列候选走廊，而不是压成一条看似精确的轨迹。读者应把注意力放在「多次机动、避实击虚」这一共同结论上。",
+  },
   { id: "seg-05", certainty: "approximate", displayDateLabel: "1935年春", fromNodeId: "node-05", toNodeId: "node-06", reasoning: "川黔滇至金沙江段先建约略走廊，渡口点单独核验", sourceIds: ["hist-010", "hist-011", "hist-012"] },
   { id: "seg-06", certainty: "approximate", displayDateLabel: "1935年5月", fromNodeId: "node-06", toNodeId: "node-07", reasoning: "金沙江至大渡河阶段不沿现代公路硬画", sourceIds: ["hist-011", "hist-013", "hist-014", "hist-021"] },
   { id: "seg-07", certainty: "approximate", displayDateLabel: "1935年5月底至6月", fromNodeId: "node-07", toNodeId: "node-08", reasoning: "泸定桥至夹金山和会师段需结合地形与史料", sourceIds: ["hist-013", "hist-014", "hist-015", "hist-016", "hist-021"] },
-  { id: "seg-08", certainty: "disputed", displayDateLabel: "1935年夏至秋", fromNodeId: "node-08", toNodeId: "node-09", reasoning: "会师后至陕北跨度大且涉及路线分歧，只作候选与分阶段说明", sourceIds: ["hist-015", "hist-016", "hist-017", "hist-018", "hist-019"] },
+  {
+    id: "seg-08",
+    certainty: "disputed",
+    displayDateLabel: "1935年夏至秋",
+    fromNodeId: "node-08",
+    toNodeId: "node-09",
+    reasoning: "会师后至陕北跨度大且涉及路线分歧，只作候选与分阶段说明",
+    sourceIds: ["hist-015", "hist-016", "hist-017", "hist-018", "hist-019"],
+    disputeNote:
+      "懋功会师之后，北上还是南下、经草地与腊子口的先后组织，在不同记述里重点不同。跨度数月、多支部队交错，很难用一条「标准答案线」概括。图中用候选虚线表示这一阶段的路线不确定性，关键节点（如腊子口、吴起镇）仍单独标出。",
+  },
 ];
