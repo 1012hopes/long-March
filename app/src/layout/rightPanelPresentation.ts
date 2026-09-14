@@ -11,10 +11,11 @@ export type RightPanelPresentation = {
 
 export function getRightPanelPresentation(kind: RightPanelKind): RightPanelPresentation {
   if (kind === "node") {
+    // 档案研究卷宗：右侧浮动卡，不再 55vw 对切地图
     return {
-      panelWidth: "55vw",
-      mapWidth: "45vw",
-      mapPaddingRight: 28,
+      panelWidth: "min(520px, 42vw)",
+      mapWidth: "100vw",
+      mapPaddingRight: 548,
       learningFocus: true,
       hideChrome: true,
     };
@@ -43,5 +44,7 @@ export function shouldHideMarkerForLearning(
   selected: boolean
 ): boolean {
   if (!learningFocus) return false;
+  // 地理参照保留（仅 CSS 压低城市），避免学习态地图过空、被切碎
+  if (kind === "geo") return false;
   return kind !== "node" || !selected;
 }

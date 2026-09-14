@@ -81,25 +81,25 @@ test("play restarts from zero when revealT is already at the end", async () => {
   assert.ok(!appText.includes("timelineRef.current >= 1 ? 0 : timelineRef.current"));
 });
 
-test("left rail renders a neutral track and current-time indicator instead of a completion fill", async () => {
-  const leftText = await readFile(new URL("../src/components/LeftTimeline.tsx", import.meta.url), "utf8");
+test("place route strip embeds the node timeline inside the place panel", async () => {
+  const placeText = await readFile(new URL("../src/components/PlaceRouteStrip.tsx", import.meta.url), "utf8");
   const cssText = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
+  const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+  const rightText = await readFile(new URL("../src/components/RightPanel.tsx", import.meta.url), "utf8");
 
-  assert.ok(!leftText.includes("timeline-fill"));
-  assert.match(leftText, /timelineMarkers\(\)/);
-  assert.match(leftText, /onTimelineChange/);
-  assert.match(leftText, /style=\{\{ top: `\$\{marker\.t \* 100\}%` \}\}/);
-  assert.match(leftText, /1934年10月/);
-  assert.match(leftText, /1935年1月/);
-  assert.match(leftText, /1935年5月/);
-  assert.match(leftText, /1935年10月/);
-  assert.ok(!leftText.includes('timeline-side" aria-hidden="true"'));
-  assert.match(leftText, /timeline-current/);
-  assert.match(cssText, /timeline-current/);
-  assert.match(cssText, /timeline-scale/);
-  assert.match(cssText, /timeline-scale-label/);
-  assert.match(cssText, /timeline-marker\.selected/);
-  assert.match(cssText, /timeline-marker\.current/);
+  assert.ok(!placeText.includes("timeline-fill"));
+  assert.match(placeText, /timelineMarkers\(\)/);
+  assert.match(placeText, /onSelectNode/);
+  assert.match(placeText, /style=\{\{ left: `\$\{marker\.t \* 100\}%` \}\}/);
+  assert.match(placeText, /1934\.10/);
+  assert.match(placeText, /1935\.10/);
+  assert.match(placeText, /prs-cursor/);
+  assert.ok(!appText.includes("LeftTimeline"), "left timeline panel should be removed from App");
+  assert.ok(!rightText.includes("LeftTimeline"));
+  assert.match(rightText, /PlaceRouteStrip/);
+  assert.match(cssText, /place-route-strip/);
+  assert.match(cssText, /prs-cursor/);
+  assert.match(cssText, /prs-dot/);
   assert.ok(!cssText.includes(".timeline-fill {"));
 });
 
@@ -121,39 +121,24 @@ test("bottom scrubber provides a drag preview and 44px touch targets", async () 
 
 test("motion stays event-driven and honors reduced-motion camera fallbacks", async () => {
   const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
-  const leftText = await readFile(new URL("../src/components/LeftTimeline.tsx", import.meta.url), "utf8");
+  const placeText = await readFile(new URL("../src/components/PlaceRouteStrip.tsx", import.meta.url), "utf8");
   const mapText = await readFile(new URL("../src/map/MapCanvas.tsx", import.meta.url), "utf8");
 
-  assert.ok(!leftText.includes("activeNodeId"), "left timeline should not auto-scroll from timeline playback state");
+  assert.ok(!placeText.includes("activeNodeId"), "place strip should not auto-scroll from timeline playback state");
   assert.match(mapText, /prefers-reduced-motion: reduce/);
   assert.match(mapText, /jumpTo\(/);
   assert.match(appText, /setCameraReq\(/);
 });
 
-test("app scopes the restored selected-node scroll suppression to the initial page load", async () => {
+test("app keeps bottom scrubber as the global time control without a left timeline panel", async () => {
   const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
-  const leftText = await readFile(new URL("../src/components/LeftTimeline.tsx", import.meta.url), "utf8");
-
-  assert.ok(appText.includes("const suppressInitialSelectedScrollRef = useRef(true);"));
-  assert.match(appText, /suppressInitialSelectedScroll=\{suppressInitialSelectedScrollRef\.current\}/);
-  assert.match(appText, /suppressInitialSelectedScrollRef\.current = false;/);
-  assert.ok(!leftText.includes("const suppressInitialSelectedScrollRef = useRef(true);"));
-  assert.match(leftText, /suppressInitialSelectedScroll/);
-  assert.match(leftText, /isMobileViewport\(\) && !p\.mobileOpen/);
-});
-
-test("left timeline markers use 44px hit areas while keeping a compact visible dot", async () => {
-  const cssText = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
-
-  assert.match(cssText, /\.timeline-marker\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
-  assert.match(cssText, /\.timeline-marker-dot\s*\{[\s\S]*width:\s*11px;[\s\S]*height:\s*11px;/);
-});
-
-test("app hides the mobile timeline toggle in tour mode and shares the normalized timeline handler", async () => {
-  const appText = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+  const placeText = await readFile(new URL("../src/components/PlaceRouteStrip.tsx", import.meta.url), "utf8");
 
   assert.ok(appText.includes("onTimelineChange={onTimelineChange}"));
-  assert.ok(appText.includes('{mode !== "tour" && !effectiveRightView && ('));
   assert.ok(appText.includes('!focusMode && mode !== "sources" && ('));
-  assert.match(appText, /setMobileTimelineOpen\(false\)/);
+  assert.ok(!appText.includes("LeftTimeline"));
+  assert.ok(!appText.includes("mobile-sheet-toggle"));
+  assert.ok(!appText.includes("setMobileTimelineOpen"));
+  assert.ok(!appText.includes("leftCollapsed"));
+  assert.match(placeText, /onSelectNode/);
 });

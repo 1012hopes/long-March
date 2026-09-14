@@ -4,6 +4,7 @@ import { segments } from "../data/sources";
 import { activeSegmentAt, tToDateLabel, NODE_FRACTIONS } from "../data/time";
 import { NODE_DATES } from "../data/time";
 import profilesData from "../data/elevation-profiles.json";
+import type { PrecisionKind } from "../map/precisionExplain";
 
 type ProfilePoint = { d: number; e: number };
 type SegmentProfile = {
@@ -32,6 +33,8 @@ type Props = {
   onVoiceToggle: () => void;
   ambientOn: boolean;
   onAmbientToggle: () => void;
+  precisionEmphasis?: PrecisionKind | null;
+  onPrecisionToggle?: (kind: PrecisionKind) => void;
 };
 
 const CERT_LABEL = {
@@ -95,7 +98,7 @@ export default function BottomPanel(p: Props) {
   }, [prof]);
 
   return (
-    <div className={`bottom-panel ${p.expanded ? "half" : "summary"}`}>
+    <div className={`bottom-panel instrument ${p.expanded ? "half" : "summary"}`}>
       <button className="bottom-grabber" onClick={p.onToggle} aria-expanded={p.expanded}>
         <span className="grabber-line" aria-hidden="true" />
         <span className="sr-only">展开或收起地形面板</span>
@@ -103,92 +106,111 @@ export default function BottomPanel(p: Props) {
 
       <div className="bottom-summary">
         <div className="bs-date">
+          <button
+            className={`play-orb ${p.playing ? "playing" : ""}`}
+            onClick={p.onPlayToggle}
+            aria-label={p.playing ? "暂停时间轴" : "播放时间轴"}
+            title={p.playing ? "暂停" : "播放全程"}
+          >
+            <span aria-hidden="true">{p.playing ? "❚❚" : "▶"}</span>
+          </button>
           <span className="bs-time-readout">
             <span className="bs-time-kicker">当前时点</span>
             <span className="bs-date-label mono">{currentLabel}</span>
           </span>
-          <button className="mini-btn" onClick={p.onPlayToggle}>
-            {p.playing ? "暂停" : "▶"}
-          </button>
-          <div className="scrub-wrap">
-            <span className={`scrub-preview ${scrubActive ? "active" : ""}`} aria-hidden="true">
-              拖动中 · {currentLabel}
-            </span>
-            <input
-              className="time-scrubber"
-              type="range"
-              min={0}
-              max={1}
-              step={0.001}
-              value={p.timelineT}
-              disabled={p.scrubbingLocked}
-              onPointerDown={() => setScrubActive(true)}
-              onPointerUp={() => setScrubActive(false)}
-              onPointerCancel={() => setScrubActive(false)}
-              onFocus={() => setScrubActive(true)}
-              onBlur={() => setScrubActive(false)}
-              onChange={(e) => p.onTimelineChange(parseFloat(e.target.value))}
-              aria-label="时间进度"
-              aria-valuetext={currentLabel}
-            />
-            <div className="scrub-ticks">
-              {nodes.map((n) => {
-                const frac = NODE_FRACTIONS[n.id];
-                const reached = p.timelineT >= frac - 1e-6;
-                return (
-                  <button
-                    key={n.id}
-                    className={`scrub-tick ${reached ? "reached" : ""}`}
-                    style={{ left: `${frac * 100}%` }}
-                    title={`${n.shortTitle}（${n.displayDateLabel}）`}
-                    aria-label={`时间轴跳到节点：${n.shortTitle}`}
-                    disabled={p.scrubbingLocked}
-                    onClick={() => p.onTimelineChange(frac)}
-                  />
-                );
-              })}
-            </div>
+        </div>
+
+        <div className="scrub-wrap">
+          <span className={`scrub-preview ${scrubActive ? "active" : ""}`} aria-hidden="true">
+            拖动中 · {currentLabel}
+          </span>
+          <input
+            className="time-scrubber"
+            type="range"
+            min={0}
+            max={1}
+            step={0.001}
+            value={p.timelineT}
+            disabled={p.scrubbingLocked}
+            onPointerDown={() => setScrubActive(true)}
+            onPointerUp={() => setScrubActive(false)}
+            onPointerCancel={() => setScrubActive(false)}
+            onFocus={() => setScrubActive(true)}
+            onBlur={() => setScrubActive(false)}
+            onChange={(e) => p.onTimelineChange(parseFloat(e.target.value))}
+            aria-label="时间进度"
+            aria-valuetext={currentLabel}
+          />
+          <div className="scrub-ticks">
+            {nodes.map((n) => {
+              const frac = NODE_FRACTIONS[n.id];
+              const reached = p.timelineT >= frac - 1e-6;
+              return (
+                <button
+                  key={n.id}
+                  className={`scrub-tick ${reached ? "reached" : ""}`}
+                  style={{ left: `${frac * 100}%` }}
+                  title={`${n.shortTitle}（${n.displayDateLabel}）`}
+                  aria-label={`时间轴跳到节点：${n.shortTitle}`}
+                  disabled={p.scrubbingLocked}
+                  onClick={() => p.onTimelineChange(frac)}
+                />
+              );
+            })}
           </div>
         </div>
+
         <div className="bs-seg">
-          <span
-            className={`cert-chip cert-${segMeta.certainty}`}
+          <button
+            type="button"
+            className={`cert-chip cert-${segMeta.certainty} chip-toggle ${p.precisionEmphasis === segMeta.certainty ? "active" : ""}`}
             title={CERT_HINT[segMeta.certainty]}
             aria-label={`当前路段精度：${CERT_LABEL[segMeta.certainty]}。${CERT_HINT[segMeta.certainty]}`}
+            aria-pressed={p.precisionEmphasis === segMeta.certainty}
+            onClick={() => p.onPrecisionToggle?.(segMeta.certainty)}
           >
             {CERT_LABEL[segMeta.certainty]}
-          </span>
+          </button>
           <span className="bs-seg-range">
             {fromNode.shortTitle} → {toNode.shortTitle}
           </span>
         </div>
+
         <div className="bs-elev">
-          {prof ? (
-            <span className="mono">
-              海拔 {prof.minElevMeters}-{prof.maxElevMeters} m · 累计爬升 ≈{prof.ascentMeters} m
-            </span>
-          ) : (
-            <span className="fine">该段暂无剖面数据</span>
-          )}
-          <button
-            className={`mini-btn toggle-btn ${p.voiceOn ? "on" : ""}`}
-            onClick={p.onVoiceToggle}
-            aria-pressed={p.voiceOn}
-            title="播放时朗读旁白（使用浏览器自带语音，默认关闭）"
-          >
-            ♪ 旁白
-          </button>
-          <button
-            className={`mini-btn toggle-btn ${p.ambientOn ? "on" : ""}`}
-            onClick={p.onAmbientToggle}
-            aria-pressed={p.ambientOn}
-            title="风声环境音（浏览器实时合成，无素材，默认关闭）"
-          >
-            ≋ 环境声
-          </button>
-          <button className="mini-btn" onClick={p.onToggle} aria-label="展开海拔剖面">
-            {p.expanded ? "收起 ▾" : "剖面 ▴"}
-          </button>
+          <span className="bs-elev-readout mono">
+            {prof ? (
+              <>
+                <span className="bs-elev-label">海拔</span>
+                {prof.minElevMeters}–{prof.maxElevMeters} m
+                <span className="bs-elev-sep" aria-hidden="true">·</span>
+                <span className="bs-elev-label">爬升</span>
+                ≈{prof.ascentMeters} m
+              </>
+            ) : (
+              <span className="fine">暂无剖面</span>
+            )}
+          </span>
+          <div className="bs-audio">
+            <button
+              className={`mini-btn toggle-btn ${p.voiceOn ? "on" : ""}`}
+              onClick={p.onVoiceToggle}
+              aria-pressed={p.voiceOn}
+              title="播放时朗读旁白（使用浏览器自带语音，默认关闭）"
+            >
+              ♪ 旁白
+            </button>
+            <button
+              className={`mini-btn toggle-btn ${p.ambientOn ? "on" : ""}`}
+              onClick={p.onAmbientToggle}
+              aria-pressed={p.ambientOn}
+              title="风声环境音（浏览器实时合成，无素材，默认关闭）"
+            >
+              ≋ 环境
+            </button>
+            <button className="mini-btn profile-toggle" onClick={p.onToggle} aria-label="展开海拔剖面">
+              {p.expanded ? "收起" : "剖面"}
+            </button>
+          </div>
         </div>
       </div>
 
