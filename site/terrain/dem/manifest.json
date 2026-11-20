@@ -1,0 +1,20 @@
+{
+  "generated": "2026-09-05",
+  "source": "AWS Terrain Tiles (SRTM/NASADEM derived, terrarium)",
+  "encoding": "terrarium",
+  "bbox": {
+    "west": 100,
+    "east": 117.5,
+    "south": 24.5,
+    "north": 37.5
+  },
+  "zooms": [
+    5,
+    6,
+    7,
+    8
+  ],
+  "tileCount": 227,
+  "bytesOnDisk": 20110096,
+  "note": "本地 DEM 金字塔：3D 地形离线可用；maxzoom 以上由上游瓦片上采样。"
+}

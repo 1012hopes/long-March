@@ -1,0 +1,353 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta name="robots" content="noindex">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>长征一条路的来处 · 二十一站与看不见的地方</title>
+<style>
+  :root{
+    --ink:#f2ece1;
+    --dim:rgba(242,236,225,.58);
+    --dim2:rgba(242,236,225,.34);
+    --red:#c0392b;
+    --gold:#d9b678;
+    --line:rgba(242,236,225,.13);
+    --serif:"Songti SC","Noto Serif SC","Source Han Serif SC",SimSun,serif;
+    --sans:-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:#08090b;color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased}
+
+  /* ---------- 头 ---------- */
+  header{position:relative;min-height:clamp(560px,86vh,880px);display:flex;align-items:center;
+    padding:clamp(40px,7vw,110px) clamp(22px,6vw,86px);overflow:hidden}
+  header::before{content:"";position:absolute;inset:0;
+    background-image:url("real/img/yudu.jpg");
+    background-size:cover;background-position:56% 42%;
+    filter:grayscale(.24) brightness(.86) contrast(1.04);
+    transform:scale(1.04)}
+  header::after{content:"";position:absolute;inset:0;
+    background:
+      linear-gradient(90deg,rgba(8,9,11,.92) 0%,rgba(8,9,11,.78) 32%,rgba(8,9,11,.34) 62%,rgba(8,9,11,.16) 100%),
+      linear-gradient(180deg,rgba(8,9,11,.50),rgba(8,9,11,.20) 42%,#08090b 96%)}
+  .hd{position:relative;z-index:2;max-width:880px}
+  .eyebrow{font-size:10.5px;letter-spacing:.44em;color:rgba(217,182,120,.85);margin-bottom:26px}
+  h1{font-family:var(--serif);font-size:clamp(34px,6.4vw,70px);line-height:1.18;
+    margin:0 0 22px;letter-spacing:.06em;font-weight:400;
+    text-shadow:0 4px 40px rgba(0,0,0,.7)}
+  .lede{font-family:var(--serif);font-size:clamp(14px,1.7vw,17.5px);line-height:2.1;
+    color:rgba(242,236,225,.76);max-width:600px;margin:0 0 14px}
+  .lede b{color:#fff;font-weight:600}
+  .rule{width:56px;height:1px;background:rgba(217,182,120,.55);margin:32px 0 30px}
+  .cta{display:inline-flex;align-items:center;gap:12px;text-decoration:none;
+    font-size:13px;letter-spacing:.2em;color:#fff;background:rgba(192,57,43,.9);
+    padding:16px 34px;border-radius:2px;transition:.25s;
+    box-shadow:0 10px 40px rgba(192,57,43,.3)}
+  .cta:hover{background:#d0402f;box-shadow:0 12px 50px rgba(192,57,43,.46)}
+  .cta.sec{background:rgba(255,255,255,.06);border:1px solid rgba(242,236,225,.26);
+    box-shadow:none;margin-left:10px}
+  .cta.sec:hover{background:rgba(255,255,255,.12);border-color:rgba(217,182,120,.6);
+    box-shadow:none}
+  .cta span{font-size:15px;transition:transform .25s}
+  .cta:hover span{transform:translateX(4px)}
+  .meta{margin-top:34px;display:flex;gap:26px;flex-wrap:wrap;font-size:11px;
+    letter-spacing:.16em;color:rgba(242,236,225,.34)}
+
+  /* ---------- 两轨说明 ---------- */
+  .tracks{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);
+    border:1px solid var(--line);margin:0 0 58px}
+  .tracks>div{background:#0a0c0f;padding:20px 22px}
+  .tracks h4{font-size:10.5px;letter-spacing:.24em;color:rgba(217,182,120,.92);
+    margin:0 0 9px;font-weight:500}
+  .tracks h4.m{color:rgba(242,236,225,.55)}
+  .tracks p{font-family:var(--serif);font-size:12.5px;line-height:1.95;
+    color:rgba(242,236,225,.62);margin:0}
+  .tracks p b{color:#fff;font-weight:600}
+  @media(max-width:700px){.tracks{grid-template-columns:1fr}}
+
+  /* ---------- 路线 ---------- */
+  main{padding:clamp(50px,8vw,110px) clamp(22px,6vw,86px) 40px;max-width:1000px;margin:0 auto}
+  .sec-h{font-family:var(--serif);font-size:clamp(20px,2.6vw,27px);letter-spacing:.06em;
+    margin:0 0 12px}
+  .sec-p{font-size:12.5px;line-height:2.05;color:var(--dim);max-width:620px;margin:0 0 54px}
+  .sec-p b{color:rgba(242,236,225,.86);font-weight:600}
+
+  ol.route{list-style:none;margin:0;padding:0;position:relative}
+  ol.route::before{content:"";position:absolute;left:26px;top:26px;bottom:60px;width:1px;
+    background:linear-gradient(180deg,rgba(217,182,120,.42),rgba(217,182,120,.10) 70%,transparent)}
+  @media(max-width:700px){ol.route::before{left:19px}}
+
+  li.st{position:relative;padding-left:78px;margin-bottom:8px}
+  @media(max-width:700px){li.st{padding-left:58px}}
+  li.st .no{position:absolute;left:0;top:16px;width:53px;height:53px;border-radius:50%;
+    display:grid;place-items:center;font-family:var(--serif);font-size:15px;
+    letter-spacing:.04em;color:var(--dim2);border:1px solid rgba(242,236,225,.16);
+    background:#0d0f12;transition:.3s;z-index:2}
+  @media(max-width:700px){li.st .no{width:39px;height:39px;font-size:12.5px;top:19px}}
+  li.st.ready .no{color:#0d0f12;background:linear-gradient(150deg,#e6c88e,#c8a468);
+    border-color:transparent;box-shadow:0 0 0 5px rgba(217,182,120,.10),0 6px 22px rgba(0,0,0,.5)}
+
+  /* 支线：缩进、虚线、不占序号圈 */
+  li.side{padding-left:78px;margin:-8px 0 12px}
+  @media(max-width:700px){li.side{padding-left:58px}}
+  li.side .kink{position:absolute;left:26px;top:-14px;width:1px;height:calc(50% + 14px);
+    border-left:1px dashed rgba(217,182,120,.34)}
+  li.side .kink::after{content:"";position:absolute;left:0;bottom:0;width:34px;height:1px;
+    border-top:1px dashed rgba(217,182,120,.34)}
+  @media(max-width:700px){li.side .kink{left:19px}li.side .kink::after{width:22px}}
+
+  .card{display:block;text-decoration:none;color:inherit;padding:22px 26px 24px;
+    border:1px solid var(--line);border-radius:3px;background:rgba(255,255,255,.014);
+    transition:.28s cubic-bezier(.4,0,.2,1)}
+  @media(max-width:700px){.card{padding:18px 18px 20px}}
+  a.card:hover{background:rgba(255,255,255,.045);border-color:rgba(217,182,120,.42);
+    transform:translateX(3px)}
+  li.side .card{margin-left:22px;padding:16px 20px 18px;border-style:dashed;
+    background:rgba(217,182,120,.022)}
+  li.side a.card:hover{transform:translateX(3px)}
+  @media(max-width:700px){li.side .card{margin-left:12px}}
+
+  .card .top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:9px}
+  li.side .card .top{margin-bottom:6px}
+  .when{font-size:11px;letter-spacing:.16em;color:rgba(217,182,120,.92)}
+  .card h3{font-family:var(--serif);font-size:clamp(16px,1.9vw,20px);font-weight:600;
+    margin:0;letter-spacing:.02em;line-height:1.5}
+  li.side .card h3{font-size:clamp(14px,1.6vw,17px)}
+  .place{font-size:11px;letter-spacing:.12em;color:var(--dim2)}
+  .tag{font-size:9.5px;letter-spacing:.2em;color:rgba(217,182,120,.9);
+    border:1px solid rgba(217,182,120,.34);border-radius:2px;padding:2px 7px}
+  .who{font-size:11px;letter-spacing:.1em;color:rgba(217,182,120,.72);margin:0 0 8px}
+  .q{font-family:var(--serif);font-size:13.5px;line-height:1.9;color:rgba(242,236,225,.66);
+    margin:12px 0 0;padding-left:13px;border-left:2px solid rgba(192,57,43,.5)}
+  li.side .q{font-size:12.5px;margin-top:8px}
+  .shot{font-size:12px;line-height:1.9;color:rgba(242,236,225,.40);margin:11px 0 0}
+  .foot{display:flex;align-items:center;justify-content:space-between;gap:14px;
+    margin-top:16px;padding-top:14px;border-top:1px solid rgba(242,236,225,.07)}
+  li.side .foot{margin-top:12px;padding-top:11px}
+  .badge{font-size:10px;letter-spacing:.18em;padding:4px 9px;border-radius:2px}
+  .badge.on{color:#0d0f12;background:rgba(217,182,120,.9)}
+  .badge.off{color:rgba(242,236,225,.34);border:1px solid rgba(242,236,225,.16)}
+  .go{font-size:11px;letter-spacing:.16em;color:rgba(242,236,225,.55);transition:.2s}
+  a.card:hover .go{color:#fff}
+
+  /* ---------- 路上的人 ---------- */
+  .folk{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1px;
+    background:var(--line);border:1px solid var(--line);margin-bottom:26px}
+  .fcard{display:block;text-decoration:none;color:inherit;background:#0a0c0f;
+    padding:22px 22px 20px;transition:.25s}
+  .fcard:hover{background:#12151a}
+  .fcard .fk{font-size:9.5px;letter-spacing:.2em;color:rgba(217,182,120,.85);margin-bottom:10px}
+  .fcard .fk.n{color:rgba(242,236,225,.42)}
+  .fcard h4{font-family:var(--serif);font-size:17px;margin:0 0 10px;letter-spacing:.04em;
+    color:#fff;font-weight:600}
+  .fcard h4 small{font-size:11px;font-weight:400;color:rgba(242,236,225,.42);
+    letter-spacing:.1em;margin-left:8px}
+  .fcard p{font-size:12px;line-height:1.95;color:rgba(242,236,225,.62);margin:0 0 14px}
+  .fcard .gl{font-size:10.5px;letter-spacing:.14em;color:rgba(217,182,120,.72)}
+  .fcard:hover .gl{color:var(--gold)}
+  /* 还没撞见的那一处：不是灰掉的卡片，是空着的位置 */
+  .fcard.lock{background:#08090b;border:1px dashed rgba(242,236,225,.06);cursor:default}
+  .fcard.lock:hover{background:#08090b}
+  .fcard.lock h4{color:rgba(242,236,225,.20);letter-spacing:.2em}
+  .fcard.lock p{color:rgba(242,236,225,.24)}
+
+  /* ---------- 尾 ---------- */
+  footer{border-top:1px solid var(--line);margin-top:70px;
+    padding:clamp(40px,7vw,84px) clamp(22px,6vw,86px) 70px;max-width:1000px;margin-left:auto;margin-right:auto}
+  .three{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:26px;margin-bottom:44px}
+  .three div h4{font-size:10.5px;letter-spacing:.2em;color:rgba(217,182,120,.9);
+    margin:0 0 10px;font-weight:500}
+  .three div p{font-size:12px;line-height:1.95;color:var(--dim);margin:0}
+  .note{font-size:11px;line-height:2;color:rgba(242,236,225,.28);max-width:680px}
+  .back{display:inline-block;margin-top:26px;font-size:11.5px;letter-spacing:.18em;
+    color:rgba(242,236,225,.6);text-decoration:none;border-bottom:1px solid rgba(242,236,225,.22);
+    padding-bottom:5px;transition:.2s}
+  .back:hover{color:#fff;border-color:#fff}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd">
+    <div class="eyebrow">AIGC 场景还原 · 中央红军 1934—1935</div>
+    <h1>长征一条路的来处</h1>
+    <p class="lede">
+      <b>主线二十一站</b>，按中央红军的实际行进：从瑞金的田埂到吴起镇的塬上。<br><br>
+      每一站先把你放到那块地方上：画面比屏幕大，<b>拖着看</b>；亮着的地方是人、是东西，
+      走近了才看得清。跟人搭上话，他会先开口，你还能回一句。<br><br>
+      有些地方<b>不写在这张图上</b>。某一步的旁边有一条岔路，走进去，就是另一户人家的日子。
+      看见了，才算数。
+    </p>
+    <div class="rule"></div>
+    <a class="cta" href="play.html#node-00">从第 1 站出发 <span>→</span></a>
+    <a class="cta sec" href="#folk">还没走到的人 <span>↓</span></a>
+    <div class="meta">
+      <span>二十一站 · 全部可进入</span>
+      <span id="metaFound">看不见的地方 0 / 10</span>
+      <span>场景里有人在动</span>
+      <span>结论挂史料，边界写在明处</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="tracks">
+    <div>
+      <h4>主 线 · 二 十 一 站</h4>
+      <p>出发、突围、渡江、开会、翻山、过草地、落脚。<b>顺序不可调换</b> ——
+        它是一条真实走过的路，时间地点都能查。</p>
+    </div>
+    <div>
+      <h4 class="m">不 在 图 上 的 地 方</h4>
+      <p>还有十处，挂在某一步的旁边：一间屋、一面墙、一座坟、一条船。
+        <b>不标出来</b> —— 走进那一站的场景，往边上挪一挪，撞见了才算。</p>
+    </div>
+  </div>
+
+  <h2 class="sec-h">二十一站</h2>
+  <p class="sec-p">
+    每一站问一个问题：<b>这个问题不是装饰，它决定这一站要让你看见什么、又不许你看见什么。</b><br>
+    编号是不连续的 —— 中间那些号，留给不在这张图上的地方。
+  </p>
+  <ol class="route" id="route"></ol>
+
+  <h2 class="sec-h" id="folk" style="margin-top:clamp(56px,9vw,110px)">还没走到的人</h2>
+  <p class="sec-p">
+    这一路走过来的人，多数没有留下名字。能查到名字的，也往往只留下一个名字 ——
+    哪一年生、哪一年死、做过哪一件事。<br>
+    下面十个位置，你走到哪儿，就亮到哪儿。<b>没走到的，还是黑的。</b>
+  </p>
+  <div class="folk" id="folkList"></div>
+</main>
+
+<footer>
+  <div class="three">
+    <div>
+      <h4>确 定 的</h4>
+      <p>有史料支撑、可直接引用的事实：时间、地点、人物、事件经过。</p>
+    </div>
+    <div>
+      <h4>约 略 的</h4>
+      <p>方向可考、细节存异的部分。数字、距离、时长，各资料常有出入，不做精确断言。</p>
+    </div>
+    <div>
+      <h4>艺 术 处 理</h4>
+      <p>影像、光线、声音、粒子，全部是合成。它只承担「让你站进去」，不承担考证。</p>
+    </div>
+  </div>
+  <p class="note">
+    说明：场景影像是生成式影像合成，不是现场照片，也不是纪录片截图。
+    人物面孔、服装与地貌比例为呈现需要，不可用于历史考证。
+    界面上的「第几天 / 已走多少里 / 海拔」为约略值，用于建立行程感，不作史料引用。
+    画面中跟随你的那个少年是叙述装置，不是史料人物。
+    本项目不为无名者编造姓名，也不以影像替代史料 —— 每站结束时给出可查的来源登记号。
+  </p>
+  <a class="back" href="../index.html">回到地图</a>
+</footer>
+
+<script src="real/nodes.js"></script>
+<script src="real/nodes-ext.js"></script>
+<script src="real/nodes-ext2.js"></script>
+<script src="real/nodes-ext3.js"></script>
+<script src="real/adv-story.js"></script>
+<script src="real/adv-story-ext.js"></script>
+<script src="real/adv-story-ext2.js"></script>
+<script src="real/adv-story-ext3.js"></script>
+<script>
+(function(){
+  var route = window.RS_ROUTE || [];
+  var nodes = window.RS_NODES || [];
+  var byId = {};
+  nodes.forEach(function(n){ byId[n.id] = n; });
+  var ol = document.getElementById("route");
+
+  function card(n, isSide) {
+    var hang = isSide && n.hang ? byId[n.hang] : null;
+    var html =
+      '<' + (n.ready ? 'a class="card" href="play.html#' + n.id + '"' : 'div class="card"') + '>' +
+        (isSide
+          ? '<div class="top"><span class="tag">' + String(n.seq).padStart(2, "0") + ' · 支 线</span>' +
+            '<span class="when">' + n.date + '</span>' +
+            '<h3>' + n.title + '</h3>' +
+            '<span class="place">' + n.place + '</span></div>' +
+            (hang ? '<p class="who">从第 ' + hang.seq + ' 站「' + hang.short + '」岔出去</p>' : '') +
+            (n.who ? '<p class="who">' + n.who + '</p>' : '')
+          : '<div class="top">' +
+            '<span class="when">' + n.date + '</span>' +
+            '<h3>' + n.title + '</h3>' +
+            '<span class="place">' + n.place + '</span></div>') +
+        '<p class="q">' + n.q + '</p>' +
+        '<p class="shot">场景：' + n.shot + '</p>' +
+        '<div class="foot">' +
+          '<span class="badge ' + (n.ready ? 'on' : 'off') + '">' +
+            (n.ready ? '可 进 入' : '影像待生产') + '</span>' +
+          '<span class="go">' + (n.ready ? '进入场景 →' : '路线已就位') + '</span>' +
+        '</div>' +
+      '</' + (n.ready ? 'a' : 'div') + '>';
+    return html;
+  }
+
+  route.forEach(function(n){
+    if (n.line === "side") return;   // 岔路不列在这里：自己走进场景里去撞
+    var li = document.createElement("li");
+    li.className = "st" + (n.ready ? " ready" : "");
+    li.innerHTML = '<span class="no">' + String(n.seq).padStart(2, "0") + '</span>' + card(n, false);
+    ol.appendChild(li);
+  });
+
+  /* 路上的人：只显示已经撞见的那几处。没撞见的，是一块没说出口的黑。 */
+  var FOLK = [
+    { id: "node-00s", k: "小 红 军 · 十 四 岁", name: "陈昌奉", note: "江西宁都人",
+      p: "六枚银元，两枚留给家里，四枚缝进腰带的夹层。带着它翻雪山、过草地，走到陕北。" },
+    { id: "node-09s", k: "小 红 军 · 十 七 岁", name: "云贵川", note: "真名不详",
+      p: "腊子口攻不进去。他赤脚先攀上崖，把绳子放下来。后来怎么样了，公开记述里没有。" },
+    { id: "node-02q", k: "师 长 · 二 十 九 岁", name: "陈树湘", note: "红三十四师",
+      p: "全军的后卫。主力过去了，他们没过。被抬着去领赏的路上，他把自己的肠子绞断。" },
+    { id: "node-08p", k: "战 士 · 红 四 方 面 军", name: "周国才", note: "又作周广才",
+      p: "断粮，把皮带割成段煮了吃。剩下半截留下来，刻上「长征记」三个字。今天在国家博物馆。" },
+    { id: "node-08q", k: "背 机 器 的 人", name: "谢宝金", note: "江西于都人",
+      p: "一台六十八公斤的手摇发电机，背过了草地。今天在军事博物馆，展签上写的是机器。" },
+    { id: "node-06d", k: "守 旗 的 一 家 人", name: "小叶丹", note: "果基约达 · 1942 年遇害",
+      p: "彝海边结盟，接了红军一面旗。他 1942 年遇害，旗由妻子和家人藏了十五年，1950 年交出。" },
+    { id: "node-02p", k: "借 宿 的 那 一 户", name: "徐解秀", note: "湖南汝城 沙洲村",
+      p: "三个女红军挤在她床上，和她母子盖一床被子。走的时候，被子剪成两半，留下了一半。" },
+    { id: "node-06c", k: "撑 船 的 人", name: "船工", note: "三十六七个人 · 姓名多不详",
+      p: "七只船，三万人，人歇船不歇。他们后来怎么样了，公开记述很少。" },
+    { id: "node-04p", k: "守 坟 的 人", name: "遵义的百姓", note: "一个卫生员 · 身份待考",
+      p: "一个卫生员死后，百姓自己垒坟、自己上坟。这座坟被人守了几十年，被称为「红军菩萨」。" },
+    { id: "node-03c", k: "念 字 的 人", name: "识字的那一个", note: "黔东南 村口",
+      p: "墙上刷了字。村里多数人不识字，得有人站在墙下，一个字一个字念给他们听。" }
+  ];
+
+  var save = {};
+  try { save = JSON.parse(localStorage.getItem("rs_adv_v1") || "{}") || {}; } catch (e) {}
+  var found = save.ach || {};
+  function got(f) { return !!found["fork:" + f.id]; }
+  var foundN = FOLK.filter(got).length;
+  var mf = document.getElementById("metaFound");
+  if (mf) mf.textContent = "看不见的地方 " + foundN + " / " + FOLK.length;
+
+  var host = document.getElementById("folkList");
+  host.innerHTML = FOLK.map(function(f){
+    if (!got(f)) {
+      return '<div class="fcard lock">' +
+        '<div class="fk n">· 还 没 走 到 ·</div>' +
+        '<h4>— — —<small>挂在某一步的旁边</small></h4>' +
+        '<p>这一处不写在路线图上。走进主线那一站的场景，把画面往边上挪一挪。</p>' +
+        '</div>';
+    }
+    var named = f.note.indexOf("不详") < 0 && f.note.indexOf("待考") < 0;
+    return '<a class="fcard" href="play.html#' + f.id + '">' +
+      '<div class="fk' + (named ? "" : " n") + '">' + f.k + '</div>' +
+      '<h4>' + f.name + '<small>' + f.note + '</small></h4>' +
+      '<p>' + f.p + '</p>' +
+      '<span class="gl">已经走到过 →</span>' +
+      '</a>';
+  }).join("");
+})();
+</script>
+</body>
+</html>
