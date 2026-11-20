@@ -1,0 +1,10 @@
+node-08q  草地·手摇发电机
+时间天气：阴天，雾
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/fadianji/，成品为 fadianji360.jpg
+
+最容易假的地方：
+木箱要明显比人宽，那是这一站的全部信息。行列全是背影。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> fadianji360 --crop 0 --corner 0 0 --grid

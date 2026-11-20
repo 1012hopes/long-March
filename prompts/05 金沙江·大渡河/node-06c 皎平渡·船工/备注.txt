@@ -1,0 +1,10 @@
+node-06c  皎平渡·船工
+时间天气：傍晚
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/jiaopingdu/，成品为 jiaopingdu360.jpg
+
+最容易假的地方：
+船要旧、要小、船头抵在沙里。等船的人一长列全背影，这一站说的是「七天七夜」。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> jiaopingdu360 --crop 0 --corner 0 0 --grid

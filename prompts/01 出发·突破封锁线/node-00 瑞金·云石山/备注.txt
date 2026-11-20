@@ -1,0 +1,10 @@
+node-00  瑞金·云石山
+时间天气：拂晓，雾低
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/ruijin/，成品为 ruijin360.jpg
+
+最容易假的地方：
+稻田要是割过的茬口、发黄，不是绿油油一片。檐下那排油灯是全图唯一暖色，别让它亮成灯带。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> ruijin360 --crop 0 --corner 0 0 --grid

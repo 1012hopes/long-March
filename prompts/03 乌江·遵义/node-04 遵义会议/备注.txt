@@ -1,0 +1,10 @@
+node-04  遵义会议
+时间天气：夜
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/zunyi/，成品为 zunyi360.jpg
+
+最容易假的地方：
+楼上亮、街面暗，反差就是这一站的意思。门板卸下靠墙这个细节不要丢，它是「屋里在开会」的旁证。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> zunyi360 --crop 0 --corner 0 0 --grid

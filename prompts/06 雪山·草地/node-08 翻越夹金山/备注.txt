@@ -1,0 +1,10 @@
+node-08  翻越夹金山
+时间天气：风雪，天光发白
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/jinshan/，成品为 jinshan360.jpg
+
+最容易假的地方：
+不能有蓝天，不能有清晰的山峰轮廓。风雪要横着飞。人只剩剪影，脸绝对不出现。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> jinshan360 --crop 0 --corner 0 0 --grid

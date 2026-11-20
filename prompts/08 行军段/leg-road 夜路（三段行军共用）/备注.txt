@@ -1,0 +1,10 @@
+leg-road  夜路（三段行军共用）
+时间天气：黎明前，天将亮
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/nightroad/，成品为 nightroad360.jpg
+
+最容易假的地方：
+这张图要能被横向推着走九十秒 —— 画面里任何近景物体（石头、树、房子）横移时都会穿帮。只留路和草。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> nightroad360 --crop 0 --corner 0 0 --grid

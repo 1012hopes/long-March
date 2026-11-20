@@ -1983,6 +1983,8 @@ li.current .tl-title {
   display: block;
   width: 100%;
   aspect-ratio: 3 / 2;
+  /* 图不能把弹窗撑爆：否则下面的"走进去"按钮要滚动才看得到 */
+  max-height: 44vh;
   object-fit: cover;
   background: #ddd6c8;
 }
@@ -2006,6 +2008,74 @@ li.current .tl-title {
   color: var(--ink);
 }
 
+/* ---- 这一站旁边的岔路（支线）---- */
+.panel-sides {
+  margin: 14px 0 6px;
+  padding: 12px 14px 14px;
+  border: 1px dashed var(--archive-line);
+  border-radius: 3px;
+  background: rgba(150, 60, 40, 0.03);
+}
+
+.scene-photo-sides {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--archive-line);
+}
+
+.sides-k {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--ink-soft, rgba(60, 52, 44, 0.62));
+  margin-bottom: 9px;
+}
+
+.sides-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+  gap: 7px;
+}
+
+.side-link {
+  display: block;
+  padding: 9px 11px 10px;
+  border: 1px solid var(--archive-line);
+  border-left: 2px solid rgba(150, 60, 40, 0.45);
+  border-radius: 2px;
+  text-decoration: none;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.35);
+  transition: 0.2s;
+}
+
+.side-link:hover {
+  background: rgba(150, 60, 40, 0.06);
+  border-left-color: rgba(150, 60, 40, 0.9);
+}
+
+.side-link .side-t {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: 3px;
+}
+
+.side-link .side-w {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: rgba(150, 60, 40, 0.82);
+  margin-bottom: 5px;
+}
+
+.side-link .side-n {
+  display: block;
+  font-size: 11px;
+  line-height: 1.72;
+  color: var(--ink-soft, rgba(60, 52, 44, 0.66));
+}
+
 .scene-photo-actions {
   display: flex;
   align-items: center;
@@ -2013,6 +2083,59 @@ li.current .tl-title {
   gap: 12px;
   margin-top: 14px;
   flex-wrap: wrap;
+}
+
+/* ---- 场景入口：走进去是这一站的主动作，比"读卷宗"重 ---- */
+.scene-photo-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.scene-enter-btn {
+  position: relative;
+  padding-left: 32px;
+}
+
+.scene-enter-btn::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--paper-light);
+  box-shadow: 0 0 0 2px rgba(252, 250, 245, 0.45);
+  animation: sceneEnterPulse 2.4s ease-out infinite;
+}
+
+.scene-enter-btn:hover::before {
+  animation-duration: 1.1s;
+}
+
+@keyframes sceneEnterPulse {
+  0% { box-shadow: 0 0 0 2px rgba(252, 250, 245, 0.55); }
+  70% { box-shadow: 0 0 0 10px rgba(252, 250, 245, 0); }
+  100% { box-shadow: 0 0 0 2px rgba(252, 250, 245, 0); }
+}
+
+.scene-photo-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--ink-soft);
+}
+
+.scene-photo-hint b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.node-footer .scene-go-btn {
+  flex: none;
 }
 
 .era-switch {
@@ -5817,19 +5940,48 @@ summary:focus-visible {
 /* —— 古今对照导读卡 —— */
 .compare-guide {
   position: absolute;
-  left: 352px;
-  top: 152px;
-  width: 300px;
-  z-index: 8;
-  padding: 14px 16px 12px;
+  left: 20px;
+  top: 96px;
+  width: min(320px, calc(100vw - 40px));
+  z-index: 24;
+  padding: 12px 14px 12px;
   border: 1px solid rgba(201, 193, 179, 0.85);
   border-radius: 8px;
   background: rgba(252, 250, 245, 0.96);
   box-shadow: 0 10px 24px rgba(28, 29, 27, 0.14);
 }
 
+.compare-guide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.compare-guide-head h3 {
+  margin: 0;
+  flex: 1;
+}
+
+.compare-guide-reopen {
+  position: absolute;
+  left: 20px;
+  top: 96px;
+  z-index: 24;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid rgba(120, 111, 96, 0.48);
+  border-radius: 6px;
+  background: rgba(252, 250, 245, 0.94);
+  color: var(--route-red);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(28, 29, 27, 0.1);
+}
+
 .compare-guide h3 {
-  margin: 0 0 8px;
   color: var(--route-red);
   font-size: 12px;
   letter-spacing: 0.14em;
@@ -5887,17 +6039,27 @@ summary:focus-visible {
   line-height: 1.5;
 }
 
-.app.left-rail .compare-guide {
-  left: 108px;
-}
-
-.app.learning-focus .compare-guide {
+.app.learning-focus .compare-guide,
+.app.learning-focus .compare-guide-reopen {
   left: 16px;
+  top: 28px;
 }
 
 @media (max-width: 900px) {
   .compare-guide {
-    display: none;
+    left: 10px;
+    right: 10px;
+    top: auto;
+    bottom: 120px;
+    width: auto;
+    max-height: 38vh;
+    overflow: auto;
+  }
+
+  .compare-guide-reopen {
+    left: 10px;
+    top: auto;
+    bottom: 120px;
   }
 }
 
@@ -6305,4 +6467,53 @@ summary:focus-visible {
 
 .app.learning-focus .finale-card {
   left: 22.5%;
+}
+
+/* ---------- 进场景 CTA（prototype） ---------- */
+.scene-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 13px 6px 11px;
+  margin-right: 4px;
+  border: 1px solid rgba(168, 54, 42, 0.52);
+  background: rgba(168, 54, 42, 0.07);
+  color: var(--route-red-dark);
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+}
+
+.scene-btn:hover {
+  background: var(--route-red-dark);
+  border-color: var(--route-red-dark);
+  color: #f6efe2;
+}
+
+.scene-btn-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--route-red-dark);
+  animation: scenePulse 2.4s ease-out infinite;
+  flex: 0 0 auto;
+}
+
+.scene-btn:hover .scene-btn-dot {
+  background: #f6efe2;
+  animation: none;
+}
+
+@keyframes scenePulse {
+  0% { box-shadow: 0 0 0 0 rgba(168, 54, 42, 0.45); }
+  70% { box-shadow: 0 0 0 6px rgba(168, 54, 42, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(168, 54, 42, 0); }
+}
+
+@media (max-width: 900px) {
+  .scene-btn { padding: 5px 10px; font-size: 12px; }
 }

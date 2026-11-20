@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { NodeUnit } from "../data/nodes";
+import { sideTripsFor } from "../data/sideTrips";
 import {
   defaultSceneEra,
   sceneEraLabel,
@@ -14,10 +15,12 @@ type Props = {
   compareOn: boolean;
   onClose: () => void;
   onOpenFullNode?: () => void;
+  onEnterScene?: () => void;
 };
 
-export default function ScenePhotoModal({ node, compareOn, onClose, onOpenFullNode }: Props) {
+export default function ScenePhotoModal({ node, compareOn, onClose, onOpenFullNode, onEnterScene }: Props) {
   const photo = useMemo(() => scenePhotoForNode(node.id), [node.id]);
+  const sides = useMemo(() => sideTripsFor(node.id), [node.id]);
   const [era, setEra] = useState<SceneEra>(() => defaultSceneEra(compareOn));
   const [imgFailed, setImgFailed] = useState(false);
 
@@ -79,6 +82,28 @@ export default function ScenePhotoModal({ node, compareOn, onClose, onOpenFullNo
           </div>
         </div>
 
+        {onEnterScene && (
+          <p className="scene-photo-hint">
+            <b>走进去</b>是一次文字冒险：你在一处停下来，面前有几条路——先问、先看、先动手，还是先往前挪，
+            由你选。不同的选法会撞见不同的史料，也会走到不同的结局。
+          </p>
+        )}
+
+        {sides.length > 0 && (
+          <div className="scene-photo-sides">
+            <div className="sides-k">这一站旁边的岔路 · 支线</div>
+            <div className="sides-list">
+              {sides.map((s) => (
+                <a key={s.id} className="side-link" href={`experience/play.html#${s.id}`}>
+                  <span className="side-t">{s.title}</span>
+                  <span className="side-w">{s.who}</span>
+                  <span className="side-n">{s.note}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="scene-photo-actions">
           <div className="era-switch" role="tablist" aria-label="古今场景">
             <button
@@ -98,11 +123,18 @@ export default function ScenePhotoModal({ node, compareOn, onClose, onOpenFullNo
               当今
             </button>
           </div>
-          {onOpenFullNode && (
-            <button type="button" className="primary-btn" onClick={onOpenFullNode}>
-              进入学习卷宗
-            </button>
-          )}
+          <div className="scene-photo-cta">
+            {onEnterScene && (
+              <button type="button" className="primary-btn scene-enter-btn" onClick={onEnterScene}>
+                走进去 · 文字冒险
+              </button>
+            )}
+            {onOpenFullNode && (
+              <button type="button" className="ghost-btn" onClick={onOpenFullNode}>
+                读卷宗
+              </button>
+            )}
+          </div>
         </div>
       </aside>
     </div>

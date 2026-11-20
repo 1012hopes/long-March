@@ -1,0 +1,10 @@
+node-05b  娄山关
+时间天气：阴天，山风
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/loushanguan/，成品为 loushanguan360.jpg
+
+最容易假的地方：
+关门是石头垒的、矮，不是城楼。两侧崖要把画面夹住 —— 这一站是「卡在一条路上」。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> loushanguan360 --crop 0 --corner 0 0 --grid

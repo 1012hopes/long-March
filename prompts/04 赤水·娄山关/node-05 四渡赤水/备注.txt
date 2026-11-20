@@ -1,0 +1,10 @@
+node-05  四渡赤水
+时间天气：阴天，河上有雾
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/chishui/，成品为 chishui360.jpg
+
+最容易假的地方：
+水要清、要能看见脚背和卵石 —— 这是「又回来了」那句话的证据。岸上的火别太大。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> chishui360 --crop 0 --corner 0 0 --grid

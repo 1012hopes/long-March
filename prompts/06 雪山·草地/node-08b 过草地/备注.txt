@@ -1,0 +1,10 @@
+node-08b  过草地
+时间天气：天很低，细雨斜着
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/caodi/，成品为 caodi360.jpg
+
+最容易假的地方：
+一棵树都不能有。要有水洼反光和一条发亮的地平线，否则「没边」就出不来。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> caodi360 --crop 0 --corner 0 0 --grid

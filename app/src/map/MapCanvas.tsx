@@ -1347,16 +1347,23 @@ export const ROUTE_BOUNDS: [number, number, number, number] = (() => {
 
 /** 单条候选线的范围 */
 export function lineBounds(lineId: string): [number, number, number, number] {
-  const line = routeGeometry.find((l) => l.id === lineId)!;
+  // 段级 ID（seg-04/seg-08）没有自己的几何，回退到其主、次候选线（seg-04a/seg-04b…）
+  const exact = routeGeometry.some((l) => l.id === lineId);
+  const lines = exact
+    ? routeGeometry.filter((l) => l.id === lineId)
+    : routeGeometry.filter((l) => l.id.startsWith(lineId));
+  const source = lines.length ? lines : routeGeometry;
   let w = 180;
   let s = 90;
   let e = -180;
   let n = -90;
-  for (const [lon, lat] of line.coordinates) {
-    w = Math.min(w, lon);
-    s = Math.min(s, lat);
-    e = Math.max(e, lon);
-    n = Math.max(n, lat);
+  for (const line of source) {
+    for (const [lon, lat] of line.coordinates) {
+      w = Math.min(w, lon);
+      s = Math.min(s, lat);
+      e = Math.max(e, lon);
+      n = Math.max(n, lat);
+    }
   }
   return [w - 0.35, s - 0.35, e + 0.35, n + 0.35];
 }

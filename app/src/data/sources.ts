@@ -63,6 +63,13 @@ export const sources: SourceEntry[] = [
   { id: "hist-043", nodeId: "node-06", title: "解读长征（26）：中央红军如何靠七只小船渡过金沙江", org: "人民网党史", sourceType: "官方党史网站", date: "2016-09-14", url: "http://dangshi.people.com.cn/n1/2016/0914/c85037-28716782.html", reliability: "high", rightsStatus: R, claim: "船工分班轮流、人歇船不歇日夜摆渡", note: "船工人数记载有36/37名出入" },
   { id: "hist-044", nodeId: "node-08", title: "长征路上吃皮带", org: "人民网党史", sourceType: "官方党史网站", date: "2016-08-25", url: "http://dangshi.people.com.cn/n1/2016/0825/c85037-28666190.html", reliability: "high", rightsStatus: R, claim: "红四方面军战士周国才过草地煮皮带，留半截烙“长征记”", note: "人名另写作“周广才”，系同一人" },
   { id: "hist-045", nodeId: "node-08", title: "红四方面军战士周广才在长征过草地时吃剩下的皮带", org: "中国国家博物馆", sourceType: "权威馆藏机构", date: "2021-08-06", url: "https://www.chnmuseum.cn/sp/gbzp/xhsww/202108/t20210806_251001.shtml", reliability: "high", rightsStatus: R, claim: "半截皮带作为文物馆藏与历史见证", note: "军博、国博分别藏有同类皮带文物" },
+  // —— 第三批增补（2026-09，中央党史和文献研究院官网核验） ——
+  { id: "hist-046", nodeId: "node-09", title: "红军陕甘支队始末", org: "中央党史和文献研究院／解放军报", sourceType: "权威研究机构", date: "2026-09-11", url: "https://www.dswxyjy.org.cn/n1/2026/0911/c244516-40797105.html", reliability: "high", rightsStatus: R, claim: "俄界会议、陕甘支队成立、翻越六盘山、吴起切尾巴", note: "" },
+  { id: "hist-047", nodeId: "node-09", title: "从六盘山到黄河边", org: "中央党史和文献研究院／解放军报", sourceType: "权威研究机构", date: "2026-09-09", url: "https://www.dswxyjy.org.cn/n1/2026/0909/c244516-40795613.html", reliability: "high", rightsStatus: R, claim: "六盘山、青石嘴战斗、到达吴起与直罗镇背景", note: "" },
+  { id: "hist-048", nodeId: "node-06", title: "“一切彝汉平民，都是兄弟骨肉”", org: "中央党史和文献研究院／解放军报", sourceType: "权威研究机构", date: "2026-09-10", url: "https://www.dswxyjy.org.cn/n1/2026/0910/c244516-40796270.html", reliability: "high", rightsStatus: R, claim: "朱德署名《中国工农红军布告》与民族政策", note: "" },
+  { id: "hist-049", nodeId: "node-03", title: "长征路上的红军标语", org: "中央党史和文献研究院／学习时报", sourceType: "权威研究机构", date: "2026-09-04", url: "https://www.dswxyjy.org.cn/n1/2026/0904/c244516-40792598.html", reliability: "high", rightsStatus: R, claim: "红军标语、《红星》报督促宣传、布告与娄山关口号召", note: "" },
+  { id: "hist-050", nodeId: "node-01", title: "红军长征的战略决策是如何作出的", org: "中央党史和文献研究院／学习时报", sourceType: "权威研究机构", date: "2026-09-04", url: "https://www.dswxyjy.org.cn/n1/2026/0904/c244516-40792600.html", reliability: "high", rightsStatus: R, claim: "出发前决策部署、扩红筹粮与红七军团红六军团行动", note: "含《红星》报节录档案图注" },
+  { id: "hist-051", nodeId: "node-09", title: "《陕甘苏区略图》：长征落脚点的历史见证", org: "中央党史和文献研究院／学习时报", sourceType: "权威研究机构", date: "2026-09-11", url: "https://www.dswxyjy.org.cn/n1/2026/0911/c244516-40797112.html", reliability: "high", rightsStatus: R, claim: "陕甘支队政治部手绘略图、通渭首诵《七律·长征》", note: "" },
 ];
 
 export const sourcesByNode = (nodeId: string) => sources.filter((s) => s.nodeId === nodeId);

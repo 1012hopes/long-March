@@ -1,0 +1,10 @@
+node-06a  彝海结盟
+时间天气：阴天，光很平
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/yihai/，成品为 yihai360.jpg
+
+最容易假的地方：
+水面要平、只反灰天，不能有波光。这里的力量全在「静」，一加高光就变风景照。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> yihai360 --crop 0 --corner 0 0 --grid

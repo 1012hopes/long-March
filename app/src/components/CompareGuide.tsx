@@ -1,9 +1,36 @@
+import { useState } from "react";
+
 /** 古今对照的导读卡：交代怎么看、能判断什么、前因后果，并用名句点题。
  *  内容为固定教学文案；地名与史实均可在节点史料中溯源。 */
 export default function CompareGuide() {
+  const [open, setOpen] = useState(true);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="compare-guide-reopen"
+        onClick={() => setOpen(true)}
+        aria-label="展开古今对照导读"
+      >
+        古今对照导读
+      </button>
+    );
+  }
+
   return (
     <aside className="compare-guide" aria-label="古今对照导读">
-      <h3>古今对照 · 同一条山河</h3>
+      <header className="compare-guide-head">
+        <h3>古今对照 · 同一条山河</h3>
+        <button
+          type="button"
+          className="mini-btn"
+          onClick={() => setOpen(false)}
+          aria-label="收起导读"
+        >
+          收起
+        </button>
+      </header>
       <figure className="compare-guide-quote">
         <blockquote>
           五岭逶迤腾细浪，乌蒙磅礴走泥丸。

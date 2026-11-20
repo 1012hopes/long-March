@@ -37,6 +37,7 @@ import { getRightPanelPresentation } from "./layout/rightPanelPresentation";
 import { scenePlaceLabel } from "./map/nodeScenePresentation";
 import { composeShareCard, downloadCanvasPng, shareCardFileName } from "./map/shareCard";
 import { expandBounds } from "./map/narrativeSync";
+import { openScene } from "./experience";
 
 const CAMERA_MOTION_MS = 1400;
 const TOUR_CAMERA_MOTION_MS = 1500;
@@ -880,6 +881,7 @@ export default function App() {
           compareOn={compareOn}
           onClose={() => setSceneOpen(false)}
           onOpenFullNode={() => setSceneOpen(false)}
+          onEnterScene={() => openScene(selectedNode.id)}
         />
       )}
 
@@ -926,6 +928,7 @@ export default function App() {
           setRightView({ type: "sources", nodeId });
         }}
         onPrevNext={prevNext}
+        onEnterScene={openScene}
         learningEmphasis={learningEmphasis}
         onLearningEmphasisChange={setLearningEmphasis}
         precisionEmphasis={precisionEmphasis}

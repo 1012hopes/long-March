@@ -1,0 +1,10 @@
+node-09b  哈达铺·榜罗镇
+时间天气：白天，阴
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/hadapu/，成品为 hadapu360.jpg
+
+最容易假的地方：
+铺面挂的纸要糊、看不出字（报纸是这一站的关键，但不能真的读出内容）。地上必须有车辙。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> hadapu360 --crop 0 --corner 0 0 --grid

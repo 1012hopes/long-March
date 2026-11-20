@@ -1,0 +1,10 @@
+node-09a  腊子口
+时间天气：阴天，沟底很暗
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/lazikou/，成品为 lazikou360.jpg
+
+最容易假的地方：
+沟要窄到压住人，天只有顶上一条缝。桥是窄木桥，两块板宽，不是石桥。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> lazikou360 --crop 0 --corner 0 0 --grid

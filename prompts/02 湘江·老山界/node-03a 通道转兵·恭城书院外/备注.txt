@@ -1,0 +1,10 @@
+node-03a  通道转兵·恭城书院外
+时间天气：夜里，刚下过雨
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/tongdao/，成品为 tongdao360.jpg
+
+最容易假的地方：
+鼓楼是侗寨那种层叠挑檐，不是宫殿也不是塔。石板反光要碎，不能整片镜面。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> tongdao360 --crop 0 --corner 0 0 --grid

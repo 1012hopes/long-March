@@ -1,0 +1,10 @@
+node-03  老山界
+时间天气：深夜，细雨，浓雾
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/laoshanjie/，成品为 laoshanjie360.jpg
+
+最容易假的地方：
+石阶要湿、边角有苔、被踩得中间低。雾里的火要小到只是几个黄点，一亮就成了路灯。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> laoshanjie360 --crop 0 --corner 0 0 --grid

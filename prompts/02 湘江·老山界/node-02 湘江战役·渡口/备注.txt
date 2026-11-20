@@ -1,0 +1,10 @@
+node-02  湘江战役·渡口
+时间天气：深秋阴天，江面大雾
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/xiangjiang/，成品为 xiangjiang360.jpg
+
+最容易假的地方：
+水要浑黄发灰，不能蓝。人只露胸口以上、全是背影。雾把对岸吃干净，留一片什么都看不见才有力。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> xiangjiang360 --crop 0 --corner 0 0 --grid

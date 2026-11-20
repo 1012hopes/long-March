@@ -1,0 +1,10 @@
+node-00s  出发前·四枚银元
+时间天气：夜，屋里只有一盏桐油灯
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/yinyuan/，成品为 yinyuan360.jpg
+
+最容易假的地方：
+银元要小、要暗，摊在布上，别特写成产品图。光只到桌面，四面墙必须黑下去。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> yinyuan360 --crop 0 --grid

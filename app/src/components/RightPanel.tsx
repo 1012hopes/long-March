@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { nodes, type NodeUnit, type ContentTag } from "../data/nodes";
 import { sources, sourcesByNode, type SourceEntry } from "../data/sources";
 import { stories, type StoryPoint } from "../data/stories";
+import { sideTripsFor } from "../data/sideTrips";
 import { getStoryMarkerPresentation } from "../map/markerPresentation";
 import { getRightPanelPresentation } from "../layout/rightPanelPresentation";
 import NodeEvidenceRail, { LearningEmphasisToolbar } from "./NodeEvidenceRail";
@@ -59,6 +60,7 @@ type Props = {
   onSelectStory: (id: string) => void;
   onOpenSources: (nodeId?: string) => void;
   onPrevNext: (dir: -1 | 1) => void;
+  onEnterScene: (nodeId: string) => void;
   learningEmphasis: LearningEmphasis;
   onLearningEmphasisChange: (value: LearningEmphasis) => void;
   precisionEmphasis: PrecisionKind | null;
@@ -68,6 +70,7 @@ type Props = {
 
 function NodeCard({ node, p }: { node: NodeUnit; p: Props }) {
   const nodeSources = sourcesByNode(node.id);
+  const sideTrips = sideTripsFor(node.id);
   const citationNumbers = buildCitationNumbers(node);
   const hasCitations = node.deep.some((block) => (block.sourceIds?.length ?? 0) > 0);
   const bodyRef = useRef<HTMLDivElement | null>(null);
@@ -278,7 +281,25 @@ function NodeCard({ node, p }: { node: NodeUnit; p: Props }) {
           </aside>
         </div>
 
+        {sideTrips.length > 0 && (
+          <div className="panel-sides">
+            <div className="sides-k">这一站旁边的岔路 · 支线</div>
+            <div className="sides-list">
+              {sideTrips.map((s) => (
+                <a key={s.id} className="side-link" href={`experience/play.html#${s.id}`}>
+                  <span className="side-t">{s.title}</span>
+                  <span className="side-w">{s.who}</span>
+                  <span className="side-n">{s.note}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="node-footer dossier-foot">
+          <button className="primary-btn scene-go-btn" onClick={() => p.onEnterScene(node.id)}>
+            走进去 · 文字冒险
+          </button>
           <button className="ghost-btn" onClick={() => p.onOpenSources(node.id)}>
             史料与出处 · {nodeSources.length} 条
           </button>

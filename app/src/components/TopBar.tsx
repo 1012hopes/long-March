@@ -123,6 +123,16 @@ export default function TopBar(p: Props) {
 
       <div className="topbar-controls">
       <nav className="topbar-modes" aria-label="学习模式">
+        <button
+          className="scene-btn"
+          onClick={() => {
+            window.location.href = new URL("experience/journey.html", document.baseURI).href;
+          }}
+          title="主线二十一站，支线十站：也可以直接点地图上的任意一站，走进去就是那一站的文字冒险"
+        >
+          <span className="scene-btn-dot" aria-hidden="true" />
+          主线 · 支线
+        </button>
         <button className={`mode-btn ${p.mode === "tour" ? "active" : ""}`} onClick={() => p.onMode("tour")}>
           跟我走一遍
         </button>

@@ -1,0 +1,10 @@
+node-08p  草地·半截皮带
+时间天气：夜里，极暗
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/pidai/，成品为 pidai360.jpg
+
+最容易假的地方：
+全图只能有火这一处光，照不到两米。人只露背影和下巴 —— 脸上不能有正面光。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> pidai360 --crop 0 --corner 0 0 --grid

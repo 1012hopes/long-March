@@ -1,0 +1,10 @@
+node-09  吴起镇
+时间天气：深秋，斜光
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/wuqi/，成品为 wuqi360.jpg
+
+最容易假的地方：
+窑洞是往黄土里掏的，不是砖砌的。光要低到影子拉很长 —— 「到了但没结束」全靠这个光。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> wuqi360 --crop 0 --corner 0 0 --grid

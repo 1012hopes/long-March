@@ -1,0 +1,10 @@
+node-05a  土城·一渡赤水
+时间天气：拂晓前，天将亮未亮
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/tucheng/，成品为 tucheng360.jpg
+
+最容易假的地方：
+石阶必须一级级真的进到水里、面上是湿的。马灯只能亮一小块，别照亮半条街。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> tucheng360 --crop 0 --corner 0 0 --grid

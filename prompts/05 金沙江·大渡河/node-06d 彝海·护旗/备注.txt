@@ -1,0 +1,10 @@
+node-06d  彝海·护旗
+时间天气：黄昏，屋外还有天光
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/huqi/，成品为 huqi360.jpg
+
+最容易假的地方：
+箱底那块布要看得见但不能清楚 —— 是旗，又不能是展出来的旗。别让模型把旗画成大幅挂在墙上。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> huqi360 --crop 0 --grid

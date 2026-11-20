@@ -1,0 +1,11 @@
+node-02p  沙洲村·半条被子
+时间天气：夜里，下雨
+出图设置见 prompts/_通用/怎么用.txt
+原图放入 assets/pano-src/shazhou/，成品为 shazhou360c.jpg
+注意：现在的成品是 shazhou360b.jpg，人物比例已经调对了。新版存 shazhou360c.jpg，不要覆盖 b —— 万一新版更差还能退回去。
+
+最容易假的地方：
+这一站最大的坑是「人太大」—— 上一版就是近景扩出来的，人占六成，怎么调视野都像贴脸。人物务必压到五分之一以下。
+
+收拾的时候（我来跑）：
+  python scripts/prep-pano360.py <源图> shazhou360c --crop 0 --grid
